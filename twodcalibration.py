@@ -108,8 +108,9 @@ if __name__ == "__main__":
         else:
             raise RuntimeError("Checkerboard could not be detected properly" +
                                 f", img = {index}")
-
+        
         gray_img_right = cv.cvtColor(img_right, cv.COLOR_BGR2GRAY)
+        ret, corners = cv.findChessboardCorners(gray_img_right, (v_edge,h_edge), None)
         if ret is True:
             objpoints2.append(idealpoints)
             corners2 = cv.cornerSubPix(gray_img_right,
@@ -117,6 +118,10 @@ if __name__ == "__main__":
                                         (11,11), (-1,-1),
                                         criteria)
             imgpoints2.append(corners)
+            
+            # cv.drawChessboardCorners(img_right, (v_edge,h_edge), corners2, ret)
+            # cv.imshow('img_right', img_right)
+            # cv.waitKey(1000)
         else:
             raise RuntimeError("Checkerboard could not be detected properly" +
                                 f", img = {index}")
@@ -149,6 +154,18 @@ if __name__ == "__main__":
 
     # traingulate points from left and right images
     points4d = cv.triangulatePoints(P1, P2, imgpoints1[1][:,0,:].T, imgpoints2[1][:,0,:].T)
+    
+    points3d = np.zeros((3,70))
+    for i, row in enumerate(points4d):
+        if i != 3:
+            for j, col in enumerate(row):
+                points3d[i,j] = points4d[i,j]/points4d[3,j]
+    
+    fig = plt.figure()
+    ax = fig.add_subplot(projection='3d')
+    ax.scatter(points3d[0,:], points3d[0,:], points3d[0,:])
+    
+    # kekl = cv.reprojectImageTo3D(disparity, Q)
 
     # img = cv.imread(str(stereo_imgs[0]))
     # img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
