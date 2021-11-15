@@ -86,39 +86,34 @@ def objfun(param, imgpoints_left, imgpoints_right, objpoints, img_size):
     return error
 
 
-def reconstruct_image(system, objpoints):
-    
-    reconstructed_points = np.zeros((70, 3))
-    
+def reconstruct_image(system, target, objpoints):
+    reconstructed_points = np.zeros((objpoints.shape[0], 4))
+    for i, objpoint in enumerate(objpoints):
+        reconstructed_points[i] = reconstruct_point(system, target, objpoint)
     return reconstructed_points
 
-def reconstruct(point_left, point_right,cam1,
-                                        left_inner,
-                                        left_outer,
-                                        right_inner,
-                                        right_outer,
-                                        target):
+def reconstruct_point(system, target, objpoint):  
     # find left optical path
-    line_left = cam1.create_ray(point_left)
-    line_left1 = left_inner.reflect_ray(line_left)
-    line_left2 = left_outer.reflect_ray(line_left1)
+    line_left = target.create_ray(objpoint, system.focal_left)
+    line_left1 = left_outer.reflect_ray(line_left)
+    line_left2 = left_inner.reflect_ray(line_left1)
 
     # find right optical path
-    line_right = cam1.create_ray(point_right)
-    line_right1 = right_inner.reflect_ray(line_right)
-    line_right2 = right_outer.reflect_ray(line_right1)
+    line_right = target.create_ray(objpoint, system.focal_right)
+    line_right1 = right_outer.reflect_ray(line_right)
+    line_right2 = right_inner.reflect_ray(line_right1)
     
-    # find intersection between left and ight optical paths
-    point3d, error,cright, cleft = line_right2.intersect_ray(line_left2)
-    point3d_local = target.local(point3d)
-    return  point3d_local, error #point3d_local
+    # find intersection between left/right optical paths with sensor
+    projection_left = system.cam.intersect_ray(line_left2)
+    projection_right = system.cam.intersect_ray(line_right2)
+    return np.hstack((projection_left, projection_right))
 
 if __name__ == "__main__":
     # create checkerboard and image container
     cb = Checkerboard(8, 11, 15)
-    con1 = ImageContainer("testimgs")
-    img_size = con1.imgsize
-    con1.extract(cb)
+    imgcon = ImageContainer("testimgs")
+    img_size = imgcon.imgsize
+    imgcon.extract(cb)
     
     # initialize objects from initial guesses
     # easily observed parameters
@@ -184,11 +179,24 @@ if __name__ == "__main__":
     for i in range(no_imgs_considered):
         targetlist.append(TargetSystem(tx, ty, tz, r1, r2, r3))
 
-    sys = System(cam, left_inner, left_outer,
-                  right_inner, right_outer, targetlist)
+    sys = System(cam, left_inner, left_outer, right_inner, right_outer)
+    sys.find_reflected_focals()
+    targets = TargetContainer(targetlist)
 
+    projections = []
+    for i in range(no_imgs_considered):
+        projections_per_image = reconstruct_image(sys,
+                                                  targets.tlst[i],
+                                                  imgcon.objpoints)
+        projections.append(projections_per_image)
 
-
+    plt.close("all")
+    img1 = plt.imread(imgcon.stereoimgs[0])
+    plt.imshow(img1)
+    projections1 = projections[0]
+    xs = np.hstack((projections1[:,0], projections1[:,2]))
+    ys = np.hstack((projections1[:,1], projections1[:,3]))
+    plt.scatter(xs, ys, s=80, facecolors='none', edgecolors='r')
 
 
     # # argument list

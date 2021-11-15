@@ -10,18 +10,18 @@ from scipy.spatial.transform import Rotation as R
 
 from classes import *
 
-
 class System(object):
     def __init__(self, cam, left_inner, left_outer,
-                 right_inner, right_outer, targetlist):
+                 right_inner, right_outer):
         self.cam = cam
         self.left_inner = left_inner
         self.left_outer = left_outer
         self.right_inner = right_inner
         self.right_outer = right_outer
-        self.targetlist = targetlist
+        self.focal_left = []
+        self.focal_right = []
 
-    def update(self, system_parameters, target_parameters):
+    def update(self, system_parameters):
         [theta_left_in, phi_left_in, r_left_in,
          theta_left_ou, phi_left_ou, r_left_ou,
          theta_right_in, phi_right_in, r_right_in,
@@ -35,8 +35,27 @@ class System(object):
         self.right_inner.update(theta_left_in, phi_left_in, r_left_in)
         self.right_outer.update(theta_right_ou, phi_right_ou, r_right_ou)
 
-        for i in range(len(self.targetlist)):
-            self.targetlist[i].update(*target_parameters[i])
+        self.find_reflected_focals()
+
+    def find_reflected_focals(self):
+        focal = self.cam.translations_lens
+
+        focal_left_in = self.left_inner.reflect_point(focal)
+        focal_left_ou = self.left_outer.reflect_point(focal_left_in)
+        self.focal_left = focal_left_ou
+
+        focal_right_in = self.right_inner.reflect_point(focal)
+        focal_right_ou = self.right_outer.reflect_point(focal_right_in)
+        self.focal_right = focal_right_ou
+
+
+class TargetContainer(object):
+    def __init__(self, tlst):
+        self.tlst = tlst
+
+    def update(self, target_parameters):
+        for i in range(len(self.tlst)):
+            self.tlst[i].update(*target_parameters[i])
 
 
 class Camera(object):
@@ -123,6 +142,24 @@ class Camera(object):
         sensor_position = self.pixel_to_coordinate(pixel_position)
         ray = self.translations_lens - sensor_position
         return Line(self.translations_lens, ray)
+
+    def intersect_ray(self, ray):
+        ret = ray.intersect_point(self.translations_lens)
+        if ret is True:
+            d = - ray.origin[2]/ray.orientation[2]
+            intersection_point = ray.origin + d * ray.orientation
+        else:
+            RuntimeError("Projection of object point does not intersect the lens.")
+        projection_point = self.coordinate_to_pixel(intersection_point)
+        return projection_point
+
+    def coordinate_to_pixel(self, coordinate):
+        if coordinate[2] == 0:
+            u = coordinate[0] / self.mx + self.u0
+            v = coordinate[1] / self.my + self.v0
+        else:
+            RuntimeError("Projection from object point does not lie on the sensor")
+        return np.array([u, v])
 
 
 class Mirror(object):
@@ -323,7 +360,15 @@ class TargetSystem(object):
         rot = R.from_rotvec(np.array([r1,r2,r3]))
         self.rotmatrix = rot.as_matrix()
 
-    def local(self, point):
+    def to_local(self, point):
         local_point = np.dot(np.linalg.inv(self.rotmatrix),
                              point - self.tranvector)
         return local_point
+
+    def to_global(self, point):
+        global_point = np.dot(self.rotmatrix, point) + self.tranvector
+        return global_point
+
+    def create_ray(self, point, focal):
+        global_point = self.to_global(point)
+        return Line(global_point, focal - global_point)

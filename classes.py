@@ -81,6 +81,16 @@ class Line(object):
         error = np.linalg.norm(c2 - c1)
         return point, error, c1, c2
 
+    def intersect_point(self, point):
+        line_to_point = np.array(point - self.origin)
+        line_to_point = line_to_point / np.linalg.norm(line_to_point)
+        if np.linalg.norm(np.array(line_to_point - self.orientation)) < 1e-3:
+            ret = True
+        else:
+            ret = False
+        return ret
+        
+
 
 class ImageContainer(object):
     """
@@ -118,8 +128,7 @@ class ImageContainer(object):
         img =  cv.imread(self.stereoimgs[0])
         self.imgsize = (img.shape[0], img.shape[1])
         self.criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-        self.objpoints_left = []
-        self.objpoints_right = []
+        self.objpoints = []
         self.imgpoints_left = []
         self.imgpoints_right = []
 
@@ -172,6 +181,7 @@ class ImageContainer(object):
         None.
 
         """
+        self.objpoints = target.gridpoints
         for index, img_path in enumerate(self.stereoimgs):
             img = cv.imread(img_path)
             [img_left, img_right] = self._img_split(img)
@@ -207,10 +217,7 @@ class ImageContainer(object):
                 raise NotImplementedError("Target type is not implemented.")
 
             if ret_left is True and ret_right is True:
-                self.objpoints_left.append(target.gridpoints)
                 self.imgpoints_left.append(corners_left)
-
-                self.objpoints_right.append(target.gridpoints)
                 self.imgpoints_right.append(corners_right)
             else:
                 raise RuntimeError("Target could not be detected properly" +
