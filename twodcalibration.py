@@ -80,7 +80,7 @@ if __name__ == "__main__":
     print( "total error: {}".format(mean_error/len(objpoints)) )
 
     # load stereo calibration images
-    stereo_imgs = Path("testimgs").glob('*.jpg')
+    stereo_imgs = Path("testimgs1").glob('*.jpg')
     objpoints1 = []
     objpoints2 = []
     left_imgs = []
@@ -124,12 +124,14 @@ if __name__ == "__main__":
         left_imgs.append(img_left)
         right_imgs.append(img_right)
 
-    imgsize = (gray_img.shape[0], int(gray_img.shape[1]/2))
+    imgsize = (2048,1536)
+    ipfm1 = np.loadtxt("leftpoints.csv", delimiter=',')
+    ipfm2 = np.loadtxt("rightpoints.csv", delimiter=',')
 
     [retval, mtx1, dist1, mtx2, dist2,
-      R12, T12, E12, F12] = cv.stereoCalibrate(objpoints1,
-                                              imgpoints1,
-                                              imgpoints2,
+      R12, T12, E12, F12] = cv.stereoCalibrate(objpoints[0],
+                                              ipfm1.T,
+                                              ipfm2.T,
                                               mtx,
                                               dist,
                                               mtx,
@@ -138,17 +140,17 @@ if __name__ == "__main__":
 
     # cv.destroyAllWindows()
 
-    # rectify coordinates to 1st camera CS
-    [R1, R2, P1, P2, Q, validPixROI1, validPixROI2] = cv.stereoRectify(mtx1,
-                                                                        dist1,
-                                                                        mtx2,
-                                                                        dist2,
-                                                                        imgsize,
-                                                                        R12,
-                                                                        T12)
+    # # rectify coordinates to 1st camera CS
+    # [R1, R2, P1, P2, Q, validPixROI1, validPixROI2] = cv.stereoRectify(mtx1,
+    #                                                                     dist1,
+    #                                                                     mtx2,
+    #                                                                     dist2,
+    #                                                                     imgsize,
+    #                                                                     R12,
+    #                                                                     T12)
 
-    # traingulate points from left and right images
-    points4d = cv.triangulatePoints(P1, P2, imgpoints1[1][:,0,:].T, imgpoints2[1][:,0,:].T)
+    # # traingulate points from left and right images
+    # points4d = cv.triangulatePoints(P1, P2, imgpoints1[1][:,0,:].T, imgpoints2[1][:,0,:].T)
 
     # img = cv.imread(str(stereo_imgs[0]))
     # img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
