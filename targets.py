@@ -5,10 +5,12 @@ Created on Mon Nov 15 09:54:22 2021
 @author: bekdulnm
 """
 
+from dataclasses import dataclass
 import numpy as np
 import matplotlib.pyplot as plt
 
 
+@dataclass
 class Target(object):
     def __init__(self, verticals, horizontals):
         self.verticals = verticals
@@ -38,19 +40,18 @@ class Circles(Target):
                                          0:self.horizontals].T.reshape(-1, 2)
 
 
-# cb = Checkerboard(8,11,15)
-# a = cb.gridpoints
-# b = a.T
-
-# cg = Circles(8,11)
-# c = cg.gridpoints
-# d = c.T
-
-# plt.close("all")
-# ax = plt.axes(projection='3d')
-# ax.scatter(d[0],d[1],d[2])
-# ax.set_xlabel('X')
-# ax.set_ylabel('Y')
-# ax.set_zlabel('Z')
-
-
+if __name__ == "__main__":
+    cb = Checkerboard(8,11,15)
+    a = cb.gridpoints
+    b = a.T
+    
+    cg = Circles(8,11)
+    c = cg.gridpoints
+    d = c.T
+    
+    plt.close("all")
+    ax = plt.axes(projection='3d')
+    ax.scatter(d[0],d[1],d[2])
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')

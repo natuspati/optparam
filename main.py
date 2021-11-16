@@ -19,78 +19,40 @@ from system import *
 from targets import *
 
 
-def objfun(param, imgpoints_left, imgpoints_right, objpoints, img_size):
-    """
-    Objective function,
+def objfun(parameters, system, targets, imgcon):
+    objpoints = imgcon.objpoints
+    no_imgs = len(targets.tlst)
+    no_points = len(imgcon.objpoints)
     
-    The function computes the error vector for the images provided.
+    system.update(parameters[:17])
+    target_parameters =  np.reshape(parameters[17:], (no_imgs, 6)) #check
+    targets.update(target_parameters)
 
-    Parameters
-    ----------
-    param : array_like
-        List of parameters. Size depends on number of images: x_k = 17 + 6*I,
-        where x_k - size of param, I - number of images.
-    imgpoints_left : ndarray
-        Extracted points for the left optical path of all images.
-    imgpoints_right : ndarray
-        Extracted points for the right optical path of all images.
-    objpoints : ndarray
-        Object points of size (N, 3), where N- number of points per image.
-    img_size : tuple
-        Resolution of an image.
+    reconstructed_impgpoints_left = []
+    reconstructed_impgpoints_right = []
 
-    Returns
-    -------
-    error : TYPE
-        DESCRIPTION.
+    for trgt in targets.tlst:
+        reconstructed_left, reconstructed_right = reconstruct_image(system,
+                                                                    trgt,
+                                                                    objpoints)
+        reconstructed_impgpoints_left.append(reconstructed_left)
+        reconstructed_impgpoints_right.append(reconstructed_right)
 
-    """
-    # Expand the parameter vector and the consecutive objects.
-    [theta_in, phi_left, r_left_inner,
-              theta_ou, phi_left, r_left_outer,
-              theta_in, phi_right, r_right_inner,
-              theta_ou, phi_right, r_right_outer,
-              focalx, focaly, focal,
-              mx, my,
-              tx, ty, tz,
-              rx, ry, rz] = param
-    
-    cam1 = Camera(img_size, mx, my, focalx, focaly, focal)
-
-    left_inner = Mirror(theta_in, phi_left, r_left_inner)
-
-    left_outer = Mirror(theta_ou, phi_left, r_left_outer)
-    
-    right_inner = Mirror(theta_in, phi_right, r_right_inner)
-    
-    right_outer = Mirror(theta_ou, phi_right, r_right_outer)
-    
-    target = Target(tx, ty, tz, rx, ry, rz)
-    
-    # Iterate over all points
-    
-    reconstructed_points = np.zeros((70, 3))
-    error = np.zeros(70)
-    midpointerror = []
-    for index, point_left in enumerate(imgpoints_left):
-        point_right = imgpoints_right[index]
-        reconstructed_points[index], mperror = reconstruct(point_left, point_right,
-                                                  cam1,
-                                                  left_inner,
-                                                  left_outer,
-                                                  right_inner,
-                                                  right_outer,
-                                                  target)
-        midpointerror.append(mperror)
-        error[index] = np.linalg.norm(objpoints[index]-reconstructed_points[index])
-    return error
+    error_vector = find_error_vector(reconstructed_impgpoints_left,
+                                     reconstructed_impgpoints_right,
+                                     imgcon,
+                                     no_imgs,
+                                     no_points)
+    return error_vector
 
 
 def reconstruct_image(system, target, objpoints):
-    reconstructed_points = np.zeros((objpoints.shape[0], 4))
+    reconstructed_left = np.zeros((objpoints.shape[0], 2))
+    reconstructed_right = np.zeros((objpoints.shape[0], 2))
     for i, objpoint in enumerate(objpoints):
-        reconstructed_points[i] = reconstruct_point(system, target, objpoint)
-    return reconstructed_points
+        reconstructed_left[i], reconstructed_right[i] = \
+            reconstruct_point(system, target, objpoint)
+    return reconstructed_left, reconstructed_right
 
 def reconstruct_point(system, target, objpoint):  
     # find left optical path
@@ -106,7 +68,34 @@ def reconstruct_point(system, target, objpoint):
     # find intersection between left/right optical paths with sensor
     projection_left = system.cam.intersect_ray(line_left2)
     projection_right = system.cam.intersect_ray(line_right2)
-    return np.hstack((projection_left, projection_right))
+    return projection_left, projection_right
+    # return np.hstack((projection_left, projection_right))
+
+def find_error_vector(reconstructed_right_side,
+                      reconstructed_left_side,
+                      imgcon, I, N):
+    error_vector = np.zeros(2 * I * N)
+    counter = 0
+
+    for i in range(I):
+        imgpoints_left = imgcon.imgpoints_left[i].reshape((N, 2))
+        imgpoints_right = imgcon.imgpoints_right[i].reshape((N, 2))
+
+        reconstructed_left = reconstructed_left_side[i]
+        reconstructed_right = reconstructed_right_side[i]
+        for n in range(N):
+            dist_left_side = np.linalg.norm(imgpoints_left[n] -
+                                            reconstructed_left[n])
+            error_vector[counter] = dist_left_side
+            counter += 1
+
+            dist_right_side = np.linalg.norm(imgpoints_right[n] -
+                                             reconstructed_right[n])
+            error_vector[counter] = dist_right_side
+            counter += 1
+
+    return error_vector
+
 
 if __name__ == "__main__":
     # create checkerboard and image container
@@ -157,7 +146,7 @@ if __name__ == "__main__":
     r_right_outer = point_right_outer[0]/right_outer_fixed.orientation[0]
 
     # define initial translations and rotations towards the target system
-    tx, ty, tz = -40.0, 80.0, 478.0
+    tx, ty, tz = -40.0, 80.0, 600.0
     rx, ry, rz = 0.0, 0.0, -np.pi/2
     
     rot = R.from_euler('xyz', np.array([rx, ry, rz]))
@@ -165,63 +154,88 @@ if __name__ == "__main__":
 
     # create objects of the optical path
     cam = Camera(img_size, mx, my, focalx, focaly, focalz)
-
     left_inner = Mirror(theta_in, phi_left, r_left_inner)
-
     left_outer = Mirror(theta_ou, phi_left, r_left_outer)
-
     right_inner = Mirror(theta_in, phi_right, r_right_inner)
-
     right_outer = Mirror(theta_ou, phi_right, r_right_outer)
     
-    no_imgs_considered = 2
+    no_imgs_considered = 1
     targetlist = []
     for i in range(no_imgs_considered):
         targetlist.append(TargetSystem(tx, ty, tz, r1, r2, r3))
 
     sys = System(cam, left_inner, left_outer, right_inner, right_outer)
-    sys.find_reflected_focals()
     targets = TargetContainer(targetlist)
 
-    projections = []
+    projections_left = []
+    projections_right = []
     for i in range(no_imgs_considered):
-        projections_per_image = reconstruct_image(sys,
-                                                  targets.tlst[i],
-                                                  imgcon.objpoints)
-        projections.append(projections_per_image)
+        projection_left, projection_right = reconstruct_image(sys,
+                                                              targets.tlst[i],
+                                                              imgcon.objpoints)
+        projections_left.append(projection_left)
+        projections_right.append(projection_right)
+
+    system_parameters = np.array([theta_in, phi_left, r_left_inner,
+                                  theta_ou, phi_left, r_left_outer,
+                                  theta_in, phi_right, r_right_inner,
+                                  theta_ou, phi_right, r_right_outer,
+                                  focalx, focaly, focalz,
+                                  mx, my])
+
+    target_parameters = np.array([tx, ty, tz, r1, r2, r3] * no_imgs_considered)
+
+    parameters = np.hstack((system_parameters, target_parameters))
+    evec = objfun(parameters, sys, targets, imgcon)
+
+    res1 = least_squares(objfun,
+                          parameters,
+                          method='trf',
+                          # jac_sparsity=None,
+                          # x_scale='jac',
+                          verbose=2,
+                          max_nfev=1000,
+                          args=(sys, targets, imgcon))
+
+    # reconstructing after optimization
+    optimized_left = []
+    optimized_right = []
+    for i in range(no_imgs_considered):
+        projection_left, projection_right = reconstruct_image(sys,
+                                                              targets.tlst[i],
+                                                              imgcon.objpoints)
+        optimized_left.append(projection_left)
+        optimized_right.append(projection_right)
 
     plt.close("all")
     img1 = plt.imread(imgcon.stereoimgs[0])
     plt.imshow(img1)
-    projections1 = projections[0]
-    xs = np.hstack((projections1[:,0], projections1[:,2]))
-    ys = np.hstack((projections1[:,1], projections1[:,3]))
-    plt.scatter(xs, ys, s=80, facecolors='none', edgecolors='r')
+    
+    rpoints_left = projections_left[0]
+    rpoints_right = projections_right[0]
+    xs = np.hstack((rpoints_left[:,0], rpoints_right[:,0]))
+    ys = np.hstack((rpoints_left[:,1], rpoints_right[:,1]))
+    plt.scatter(xs, ys, s=100, facecolors='none', edgecolors='b') 
 
+    opoints_left = optimized_left[0]
+    opoints_right = optimized_right[0]
+    xs = np.hstack((opoints_left[:,0], opoints_right[:,0]))
+    ys = np.hstack((opoints_left[:,1], opoints_right[:,1]))
+    plt.scatter(xs, ys, s=100, facecolors='none', edgecolors='g')
 
-    # # argument list
-    # ivs = np.array([theta_in, phi_left, r_left_inner,
-    #                 theta_ou, phi_left, r_left_outer,
-    #                 theta_in, phi_right, r_right_inner,
-    #                 theta_ou, phi_right, r_right_outer,
-    #                 focalx, focaly, focalz,
-    #                 mx, my,
-    #                 tx, ty, tz,
-    #                 r1, r2, r3])
+    ipoints_left = imgcon.imgpoints_left[0].reshape(70,2)
+    ipoints_right = imgcon.imgpoints_right[0].reshape(70,2)
+    xs = np.hstack((ipoints_left[:,0], ipoints_right[:,0]))
+    ys = np.hstack((ipoints_left[:,1], ipoints_right[:,1]))
+    plt.scatter(xs, ys, s=100, facecolors='none', edgecolors='r') 
+    plt.show()
 
-    
-    
-    
-    
-    
-    
-    # plt.close("all")
     # # plot extracted feature points
     # f2 = plt.figure(1)
     # plt.imshow(ii)    
     # plt.scatter(imgpoints_left[:,0], imgpoints_left[:,1],s=80, facecolors='none', edgecolors='r')
     # plt.scatter(imgpoints_right[:,0], imgpoints_right[:,1], s=80, facecolors='none', edgecolors='r')
-    
+
     # # plotting reconstructed points
     # f1 = plt.figure(2)    
     # ax = plt.axes(projection='3d')
@@ -229,8 +243,7 @@ if __name__ == "__main__":
     # ax.set_xlabel('X')
     # ax.set_ylabel('Y')
     # ax.set_zlabel('Z')
-   
-    
+
     # diff = []
     # for i, point in enumerate(objpoints):
     #     if i % 7 == 0:
@@ -249,15 +262,3 @@ if __name__ == "__main__":
     #                    [(-np.inf,np.inf)]*11))
     # xbounds = xbounds.T
     # xtuple = tuple(xbounds)
-        
-    # res1 = least_squares(objfun,
-    #               ivs,
-    #               method='trf',
-    #               verbose=2,
-    #               x_scale='jac',
-    #               bounds=xtuple,
-    #               max_nfev=1000,
-    #               args=(imgpoints_left, imgpoints_right, objpoints, img_size)
-    
-
-

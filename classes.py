@@ -84,7 +84,8 @@ class Line(object):
     def intersect_point(self, point):
         line_to_point = np.array(point - self.origin)
         line_to_point = line_to_point / np.linalg.norm(line_to_point)
-        if np.linalg.norm(np.array(line_to_point - self.orientation)) < 1e-3:
+        if np.allclose(self.orientation, line_to_point) or \
+            np.allclose(self.orientation, -line_to_point):
             ret = True
         else:
             ret = False

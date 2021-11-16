@@ -18,21 +18,22 @@ class System(object):
         self.left_outer = left_outer
         self.right_inner = right_inner
         self.right_outer = right_outer
-        self.focal_left = []
-        self.focal_right = []
+        self.focal_left = np.array([])
+        self.focal_right = np.array([])
+        self.find_reflected_focals()
 
     def update(self, system_parameters):
-        [theta_left_in, phi_left_in, r_left_in,
-         theta_left_ou, phi_left_ou, r_left_ou,
-         theta_right_in, phi_right_in, r_right_in,
-         theta_right_ou, phi_right_ou, r_right_ou,
-         focalx, focaly, focalz,
-         mx, my] = system_parameters
+        theta_left_in, phi_left_in, r_left_in,\
+        theta_left_ou, phi_left_ou, r_left_ou,\
+        theta_right_in, phi_right_in, r_right_in,\
+        theta_right_ou, phi_right_ou, r_right_ou,\
+        focalx, focaly, focalz,\
+        mx, my = system_parameters
 
-        self.cam.update(focalx, focaly, focalz)
+        self.cam.update(mx, my, focalx, focaly, focalz)
         self.left_inner.update(theta_left_in, phi_left_in, r_left_in)
         self.left_outer.update(theta_left_ou, phi_left_ou, r_left_ou)
-        self.right_inner.update(theta_left_in, phi_left_in, r_left_in)
+        self.right_inner.update(theta_right_in, phi_right_in, r_right_in)
         self.right_outer.update(theta_right_ou, phi_right_ou, r_right_ou)
 
         self.find_reflected_focals()
@@ -99,7 +100,9 @@ class Camera(object):
         self.v0 = img_size[0]/2
         self.translations_lens = np.array([focalx, focaly, focalz])
 
-    def update(self, focalx, focaly, focalz):
+    def update(self, mx, my, focalx, focaly, focalz):
+        self.mx = mx
+        self.my = my
         self.translations_lens = np.array([focalx, focaly, focalz])
 
     def pixel_to_coordinate(self, pixel_position):
@@ -149,16 +152,16 @@ class Camera(object):
             d = - ray.origin[2]/ray.orientation[2]
             intersection_point = ray.origin + d * ray.orientation
         else:
-            RuntimeError("Projection of object point does not intersect the lens.")
+            raise ValueError("Projection from object point does not intersect the lens")
         projection_point = self.coordinate_to_pixel(intersection_point)
         return projection_point
 
     def coordinate_to_pixel(self, coordinate):
-        if coordinate[2] == 0:
+        if np.isclose(coordinate[2], 0):
             u = coordinate[0] / self.mx + self.u0
             v = coordinate[1] / self.my + self.v0
         else:
-            RuntimeError("Projection from object point does not lie on the sensor")
+            raise ValueError("Projection from object point does not lie on the sensor")
         return np.array([u, v])
 
 
