@@ -24,7 +24,8 @@ def objfun(parameters, system, targets, imgcon):
     no_imgs = len(targets.tlst)
     no_points = len(imgcon.objpoints)
     
-    system.update(parameters[:17])
+    system_parameters = parameters[:17]
+    system.update(system_parameters)
     target_parameters =  np.reshape(parameters[17:], (no_imgs, 6)) #check
     targets.update(target_parameters)
 
@@ -110,7 +111,7 @@ if __name__ == "__main__":
     phi_ou = 52*np.pi/180
     dist_bw_mirrors = 40
     dist_to_lens = 15
-    mx, my = [3e-3]*2
+    mx, my = [2.82/10000]*2
     focalz = 4.4
     focalx, focaly = 0, 0
     
@@ -146,7 +147,7 @@ if __name__ == "__main__":
     r_right_outer = point_right_outer[0]/right_outer_fixed.orientation[0]
 
     # define initial translations and rotations towards the target system
-    tx, ty, tz = -40.0, 80.0, 600.0
+    tx, ty, tz = -40.0, 80.0, 500.0
     rx, ry, rz = 0.0, 0.0, -np.pi/2
     
     rot = R.from_euler('xyz', np.array([rx, ry, rz]))
@@ -183,6 +184,12 @@ if __name__ == "__main__":
                                   focalx, focaly, focalz,
                                   mx, my])
 
+    # system_parameters = np.array([theta_in, phi_left, r_left_inner,
+    #                               theta_ou, phi_left, r_left_outer,
+    #                               theta_in, phi_right, r_right_inner,
+    #                               theta_ou, phi_right, r_right_outer,
+    #                               focalx, focaly, focalz])
+
     target_parameters = np.array([tx, ty, tz, r1, r2, r3] * no_imgs_considered)
 
     parameters = np.hstack((system_parameters, target_parameters))
@@ -192,11 +199,21 @@ if __name__ == "__main__":
                           parameters,
                           method='trf',
                           # jac_sparsity=None,
-                          # x_scale='jac',
-                          verbose=2,
-                          max_nfev=1000,
+                           x_scale='jac',
+                          # gtol=1,
+                          # verbose=2,
+                          max_nfev=500,
                           args=(sys, targets, imgcon))
 
+    # res2 = least_squares(objfun,
+    #                       res1.x,
+    #                       method='trf',
+    #                       # jac_sparsity=None,
+    #                       x_scale='jac',
+    #                       gtol=1,
+    #                       verbose=2,
+    #                       max_nfev=200,
+    #                       args=(sys, targets, imgcon))
     # reconstructing after optimization
     optimized_left = []
     optimized_right = []
@@ -207,15 +224,37 @@ if __name__ == "__main__":
         optimized_left.append(projection_left)
         optimized_right.append(projection_right)
 
+    a = trf.passlist
+    # np.savetxt('forplotting1.csv', a, delimiter=',')
+    
+    # plt.close("all")
+    # plt.bar(np.arange(len(a[-1])), a[-1])
+    # ax = plt.gca()
+    # ax.set_yscale('log')
+    # plt.xlabel('parameter', fontsize=16)
+    # plt.ylabel('gradient value', fontsize=16)
+    # plt.yticks(fontsize=16)
+    # plt.xticks(ticks=np.arange(len(a[-1])),
+    #            labels=['theta_in', 'phi_left', 'r_left_inner',
+    #                    'theta_ou', 'phi_left', 'r_left_outer',
+    #                    'theta_in', 'phi_right', 'r_right_inner',
+    #                    'theta_ou', 'phi_right', 'r_right_outer',
+    #                    'focalx', 'focaly', 'focalz',
+    #                    'mx', 'my',
+    #                    'Tx', 'Ty', 'Tz',
+    #                    'r1', 'r2', 'r3'], rotation=90, fontsize=16)
+    
+    
+    
     plt.close("all")
     img1 = plt.imread(imgcon.stereoimgs[0])
     plt.imshow(img1)
     
-    rpoints_left = projections_left[0]
-    rpoints_right = projections_right[0]
-    xs = np.hstack((rpoints_left[:,0], rpoints_right[:,0]))
-    ys = np.hstack((rpoints_left[:,1], rpoints_right[:,1]))
-    plt.scatter(xs, ys, s=100, facecolors='none', edgecolors='b') 
+    # rpoints_left = projections_left[0]
+    # rpoints_right = projections_right[0]
+    # xs = np.hstack((rpoints_left[:,0], rpoints_right[:,0]))
+    # ys = np.hstack((rpoints_left[:,1], rpoints_right[:,1]))
+    # plt.scatter(xs, ys, s=100, facecolors='none', edgecolors='b') 
 
     opoints_left = optimized_left[0]
     opoints_right = optimized_right[0]
@@ -229,36 +268,3 @@ if __name__ == "__main__":
     ys = np.hstack((ipoints_left[:,1], ipoints_right[:,1]))
     plt.scatter(xs, ys, s=100, facecolors='none', edgecolors='r') 
     plt.show()
-
-    # # plot extracted feature points
-    # f2 = plt.figure(1)
-    # plt.imshow(ii)    
-    # plt.scatter(imgpoints_left[:,0], imgpoints_left[:,1],s=80, facecolors='none', edgecolors='r')
-    # plt.scatter(imgpoints_right[:,0], imgpoints_right[:,1], s=80, facecolors='none', edgecolors='r')
-
-    # # plotting reconstructed points
-    # f1 = plt.figure(2)    
-    # ax = plt.axes(projection='3d')
-    # ax.scatter(objpoints[:,0],objpoints[:,1],objpoints[:,2], s=80, color='C0') #facecolors='none', edgecolors='C1')
-    # ax.set_xlabel('X')
-    # ax.set_ylabel('Y')
-    # ax.set_zlabel('Z')
-
-    # diff = []
-    # for i, point in enumerate(objpoints):
-    #     if i % 7 == 0:
-    #         for j in range(i,i+6):
-    #             diff.append(np.linalg.norm(objpoints[j] - objpoints[j+1]))
-                
-    # for i in range(0, 63, 7):
-    #     for j in range(7):
-    #         diff.append(np.linalg.norm(objpoints[i+j] - objpoints[i+j+7]))            
-
-    # diff = np.array(diff)
-    # print(f"average distance bw neighbouring points: {np.average(diff)}")
-    
-    
-    # xbounds = np.vstack(([(0, np.pi),(0,2*np.pi),(-np.inf,np.inf)]*4,
-    #                    [(-np.inf,np.inf)]*11))
-    # xbounds = xbounds.T
-    # xtuple = tuple(xbounds)

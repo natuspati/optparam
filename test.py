@@ -9,13 +9,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.spatial.transform import Rotation as R
-from class_defs import *
+from classes import *
 import csv
 import time
 
 if __name__ == "__main__":
     
-    lst = np.loadtxt("convinfo.csv", delimiter=',')
+    lst = np.loadtxt("forplotting1.csv", delimiter=',')
     
     j = 0
     itlst = []
@@ -46,11 +46,11 @@ if __name__ == "__main__":
     rz = []
     
     
-    for i in np.linspace(0,lst.shape[0]-1,25,dtype=int):
+    for i in np.linspace(0,lst.shape[0]-1,200,dtype=int):
         j += 1
         itlst.append(i)
-        flst.append(lst[i,0])
-        glst.append(lst[i,1])
+        flst.append(lst[i,1])
+        glst.append(lst[i,0])
         thetalin.append(lst[i,2])
         philin.append(lst[i,3])
         rlin.append(lst[i,4])
@@ -102,7 +102,7 @@ if __name__ == "__main__":
     ry = np.array([ry])
     rz = np.array([rz])
     
-    glst = glst*1e5
+    
     
     
     thetalin = thetalin*180/np.pi
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     plt.title(r'$r_{target}$ rotation vector of target over iterations')
     plt.xlabel('iteration number')
     plt.grid(b=True, which='both')
-    plt.legend([r'$r_z$',r'$r_2$',r'$r_3$'])
+    plt.legend([r'$r_1$',r'$r_2$',r'$r_3$'])
     
     plt.figure(10)
     plt.scatter(itlst,eax,s=80,facecolors='none',color='C0')

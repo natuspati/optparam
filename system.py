@@ -22,6 +22,21 @@ class System(object):
         self.focal_right = np.array([])
         self.find_reflected_focals()
 
+    # def update(self, system_parameters):
+    #     theta_left_in, phi_left_in, r_left_in,\
+    #     theta_left_ou, phi_left_ou, r_left_ou,\
+    #     theta_right_in, phi_right_in, r_right_in,\
+    #     theta_right_ou, phi_right_ou, r_right_ou,\
+    #     focalx, focaly, focalz = system_parameters
+
+    #     self.cam.update(focalx, focaly, focalz)
+    #     self.left_inner.update(theta_left_in, phi_left_in, r_left_in)
+    #     self.left_outer.update(theta_left_ou, phi_left_ou, r_left_ou)
+    #     self.right_inner.update(theta_right_in, phi_right_in, r_right_in)
+    #     self.right_outer.update(theta_right_ou, phi_right_ou, r_right_ou)
+
+    #     self.find_reflected_focals()    
+
     def update(self, system_parameters):
         theta_left_in, phi_left_in, r_left_in,\
         theta_left_ou, phi_left_ou, r_left_ou,\
@@ -94,15 +109,18 @@ class Camera(object):
         Translation vector between lens and centre of the sensor.
     """
     def __init__(self, img_size, mx, my, focalx, focaly, focalz):
-        self.mx = mx
-        self.my = my
+        self.mx = 10*mx
+        self.my = 10*my
         self.u0 = img_size[1]/2
         self.v0 = img_size[0]/2
         self.translations_lens = np.array([focalx, focaly, focalz])
 
+    # def update(self, focalx, focaly, focalz):
+    #     self.translations_lens = np.array([focalx, focaly, focalz])
+
     def update(self, mx, my, focalx, focaly, focalz):
-        self.mx = mx
-        self.my = my
+        self.mx = 10*mx
+        self.my = 10*my
         self.translations_lens = np.array([focalx, focaly, focalz])
 
     def pixel_to_coordinate(self, pixel_position):
