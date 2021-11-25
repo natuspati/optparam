@@ -381,13 +381,13 @@ class TargetSystem(object):
         rot = R.from_rotvec(np.array([r1,r2,r3]))
         self.rotmatrix = rot.as_matrix()
 
-    def to_local(self, point):
+    def to_local(self, global_point):
         local_point = np.dot(np.linalg.inv(self.rotmatrix),
-                             point - self.tranvector)
+                             global_point - self.tranvector)
         return local_point
 
-    def to_global(self, point):
-        global_point = np.dot(self.rotmatrix, point) + self.tranvector
+    def to_global(self, local_point):
+        global_point = np.dot(self.rotmatrix, local_point) + self.tranvector
         return global_point
 
     def create_ray(self, point, focal):

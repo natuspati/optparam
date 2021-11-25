@@ -7,10 +7,12 @@ Created on Sun Oct 24 15:45:02 2021
 
 
 # imports
+from  sys import getsizeof
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from scipy.optimize import least_squares
+from scipy.sparse import csc_matrix
 import scipy.optimize._lsq.trf as trf
 trf.passlist = []
 
@@ -19,13 +21,13 @@ from system import *
 from targets import *
 
 
-def objfun(parameters, system, targets, imgcon):
+def objfun(parameters, sys1tem, targets, imgcon):
     objpoints = imgcon.objpoints
     no_imgs = len(targets.tlst)
     no_points = len(imgcon.objpoints)
     
-    system_parameters = parameters[:17]
-    system.update(system_parameters)
+    sys1tem_parameters = parameters[:17]
+    sys1tem.update(sys1tem_parameters)
     target_parameters =  np.reshape(parameters[17:], (no_imgs, 6)) #check
     targets.update(target_parameters)
 
@@ -33,7 +35,7 @@ def objfun(parameters, system, targets, imgcon):
     reconstructed_impgpoints_right = []
 
     for trgt in targets.tlst:
-        reconstructed_left, reconstructed_right = reconstruct_image(system,
+        reconstructed_left, reconstructed_right = reconstruct_image(sys1tem,
                                                                     trgt,
                                                                     objpoints)
         reconstructed_impgpoints_left.append(reconstructed_left)
@@ -47,28 +49,28 @@ def objfun(parameters, system, targets, imgcon):
     return error_vector
 
 
-def reconstruct_image(system, target, objpoints):
+def reconstruct_image(sys1tem, target, objpoints):
     reconstructed_left = np.zeros((objpoints.shape[0], 2))
     reconstructed_right = np.zeros((objpoints.shape[0], 2))
     for i, objpoint in enumerate(objpoints):
         reconstructed_left[i], reconstructed_right[i] = \
-            reconstruct_point(system, target, objpoint)
+            reconstruct_point(sys1tem, target, objpoint)
     return reconstructed_left, reconstructed_right
 
-def reconstruct_point(system, target, objpoint):  
+def reconstruct_point(sys1tem, target, objpoint):  
     # find left optical path
-    line_left = target.create_ray(objpoint, system.focal_left)
+    line_left = target.create_ray(objpoint, sys1tem.focal_left)
     line_left1 = left_outer.reflect_ray(line_left)
     line_left2 = left_inner.reflect_ray(line_left1)
 
     # find right optical path
-    line_right = target.create_ray(objpoint, system.focal_right)
+    line_right = target.create_ray(objpoint, sys1tem.focal_right)
     line_right1 = right_outer.reflect_ray(line_right)
     line_right2 = right_inner.reflect_ray(line_right1)
     
     # find intersection between left/right optical paths with sensor
-    projection_left = system.cam.intersect_ray(line_left2)
-    projection_right = system.cam.intersect_ray(line_right2)
+    projection_left = sys1tem.cam.intersect_ray(line_left2)
+    projection_right = sys1tem.cam.intersect_ray(line_right2)
     return projection_left, projection_right
     # return np.hstack((projection_left, projection_right))
 
@@ -146,8 +148,8 @@ if __name__ == "__main__":
     point_right_outer = right_outer_fixed.intersect(line_right_outer)
     r_right_outer = point_right_outer[0]/right_outer_fixed.orientation[0]
 
-    # define initial translations and rotations towards the target system
-    tx, ty, tz = -40.0, 80.0, 500.0
+    # define initial translations and rotations towards the target sys1tem
+    tx, ty, tz = 0.0, 0.0, 600.0
     rx, ry, rz = 0.0, 0.0, -np.pi/2
     
     rot = R.from_euler('xyz', np.array([rx, ry, rz]))
@@ -165,66 +167,99 @@ if __name__ == "__main__":
     for i in range(no_imgs_considered):
         targetlist.append(TargetSystem(tx, ty, tz, r1, r2, r3))
 
-    sys = System(cam, left_inner, left_outer, right_inner, right_outer)
+    sys1 = System(cam, left_inner, left_outer, right_inner, right_outer)
     targets = TargetContainer(targetlist)
 
     projections_left = []
     projections_right = []
     for i in range(no_imgs_considered):
-        projection_left, projection_right = reconstruct_image(sys,
+        projection_left, projection_right = reconstruct_image(sys1,
                                                               targets.tlst[i],
                                                               imgcon.objpoints)
         projections_left.append(projection_left)
         projections_right.append(projection_right)
 
-    system_parameters = np.array([theta_in, phi_left, r_left_inner,
+    sys1tem_parameters = np.array([theta_in, phi_left, r_left_inner,
                                   theta_ou, phi_left, r_left_outer,
                                   theta_in, phi_right, r_right_inner,
                                   theta_ou, phi_right, r_right_outer,
                                   focalx, focaly, focalz,
                                   mx, my])
 
-    # system_parameters = np.array([theta_in, phi_left, r_left_inner,
-    #                               theta_ou, phi_left, r_left_outer,
-    #                               theta_in, phi_right, r_right_inner,
-    #                               theta_ou, phi_right, r_right_outer,
-    #                               focalx, focaly, focalz])
-
     target_parameters = np.array([tx, ty, tz, r1, r2, r3] * no_imgs_considered)
 
-    parameters = np.hstack((system_parameters, target_parameters))
-    evec = objfun(parameters, sys, targets, imgcon)
+    parameters = np.hstack((sys1tem_parameters, target_parameters))
+    evec = objfun(parameters, sys1, targets, imgcon)
 
+    points_per_image = 2 * cb.gridpoints.shape[0]
+    tot_points = no_imgs_considered * points_per_image
+    half_points = int(tot_points / 2)
+    no_parameters = len(parameters)
+
+    left_mirror_set = set(range(6))
+    right_mirror_set = set(range(6,12))
+    shared_set = set(range(12,17))
+    rt_set = set(range(17,no_parameters))
+
+    indices = np.empty(17*tot_points, dtype=int)
+    data = np.ones(17*tot_points, dtype=np.bool_)
+    indptrs = np.zeros(no_parameters+1, dtype=int)
+
+    index_counter = 0
+    rt_counter = 0
+    img_counter = 0
+
+    for i in range(no_parameters):
+        if i in left_mirror_set:
+            indptrs[i+1] = indptrs[i] + half_points
+            for j in range(half_points):
+                indices[index_counter] = 2*j + 1
+                index_counter += 1
+        elif i in right_mirror_set:
+            indptrs[i+1] = indptrs[i] + half_points
+            for j in range(half_points):
+                indices[index_counter] = 2*j
+                index_counter += 1
+        elif i in shared_set:
+            indptrs[i+1] = indptrs[i] + tot_points
+            for j in range(tot_points):
+                indices[index_counter] = j
+                index_counter += 1
+        elif i in rt_set:
+            indptrs[i+1] = indptrs[i] + points_per_image
+            for j in range(points_per_image):
+                indices[index_counter] = j + img_counter * points_per_image
+                index_counter += 1
+            rt_counter += 1
+            if rt_counter % 6 == 0:
+                img_counter += 1
+        else:
+            raise ValueError("Parameter range is incorrect.")
+    mtx = csc_matrix((data, indices, indptrs),
+                     shape=(tot_points, no_parameters))
+    
     res1 = least_squares(objfun,
                           parameters,
                           method='trf',
-                          # jac_sparsity=None,
-                           x_scale='jac',
-                          # gtol=1,
-                          # verbose=2,
-                          max_nfev=500,
-                          args=(sys, targets, imgcon))
+                          jac_sparsity=mtx,
+                          x_scale='jac',
+                          verbose=2,
+                          max_nfev=100,
+                          xtol=1e-15,
+                          ftol=1e-8,
+                          args=(sys1, targets, imgcon))
 
-    # res2 = least_squares(objfun,
-    #                       res1.x,
-    #                       method='trf',
-    #                       # jac_sparsity=None,
-    #                       x_scale='jac',
-    #                       gtol=1,
-    #                       verbose=2,
-    #                       max_nfev=200,
-    #                       args=(sys, targets, imgcon))
     # reconstructing after optimization
     optimized_left = []
     optimized_right = []
     for i in range(no_imgs_considered):
-        projection_left, projection_right = reconstruct_image(sys,
+        projection_left, projection_right = reconstruct_image(sys1,
                                                               targets.tlst[i],
                                                               imgcon.objpoints)
         optimized_left.append(projection_left)
         optimized_right.append(projection_right)
 
-    a = trf.passlist
+    # a = trf.passlist
     # np.savetxt('forplotting1.csv', a, delimiter=',')
     
     # plt.close("all")

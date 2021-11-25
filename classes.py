@@ -9,7 +9,8 @@ import numpy as np
 import cv2 as cv
 from pathlib import Path
 
-from targets import *
+from targets import Checkerboard
+from targets import Circles
 
 class Line(object):
     """
