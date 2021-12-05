@@ -8,7 +8,8 @@ Created on Mon Nov 15 13:46:35 2021
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from classes import *
+from classes import Line, ImageContainer
+
 
 class System(object):
     def __init__(self, cam, left_inner, left_outer,
@@ -20,7 +21,7 @@ class System(object):
         self.right_outer = right_outer
         self.focal_left = np.array([])
         self.focal_right = np.array([])
-        self.find_reflected_focals()
+        self._find_reflected_focals()
 
     # def update(self, system_parameters):
     #     theta_left_in, phi_left_in, r_left_in,\
@@ -38,11 +39,11 @@ class System(object):
     #     self.find_reflected_focals()    
 
     def update(self, system_parameters):
-        theta_left_in, phi_left_in, r_left_in,\
-        theta_left_ou, phi_left_ou, r_left_ou,\
-        theta_right_in, phi_right_in, r_right_in,\
-        theta_right_ou, phi_right_ou, r_right_ou,\
-        focalx, focaly, focalz,\
+        theta_left_in, phi_left_in, r_left_in, \
+        theta_left_ou, phi_left_ou, r_left_ou, \
+        theta_right_in, phi_right_in, r_right_in, \
+        theta_right_ou, phi_right_ou, r_right_ou, \
+        focalx, focaly, focalz, \
         mx, my = system_parameters
 
         self.cam.update(mx, my, focalx, focaly, focalz)
@@ -51,9 +52,9 @@ class System(object):
         self.right_inner.update(theta_right_in, phi_right_in, r_right_in)
         self.right_outer.update(theta_right_ou, phi_right_ou, r_right_ou)
 
-        self.find_reflected_focals()
+        self._find_reflected_focals()
 
-    def find_reflected_focals(self):
+    def _find_reflected_focals(self):
         focal = self.cam.translations_lens
 
         focal_left_in = self.left_inner.reflect_point(focal)
@@ -108,19 +109,20 @@ class Camera(object):
     translations_lens : ndarray
         Translation vector between lens and centre of the sensor.
     """
+
     def __init__(self, img_size, mx, my, focalx, focaly, focalz):
-        self.mx = 10*mx
-        self.my = 10*my
-        self.u0 = img_size[1]/2
-        self.v0 = img_size[0]/2
+        self.mx = 10 * mx
+        self.my = 10 * my
+        self.u0 = img_size[1] / 2
+        self.v0 = img_size[0] / 2
         self.translations_lens = np.array([focalx, focaly, focalz])
 
     # def update(self, focalx, focaly, focalz):
     #     self.translations_lens = np.array([focalx, focaly, focalz])
 
     def update(self, mx, my, focalx, focaly, focalz):
-        self.mx = 10*mx
-        self.my = 10*my
+        self.mx = 10 * mx
+        self.my = 10 * my
         self.translations_lens = np.array([focalx, focaly, focalz])
 
     def pixel_to_coordinate(self, pixel_position):
@@ -167,7 +169,7 @@ class Camera(object):
     def intersect_ray(self, ray):
         ret = ray.intersect_point(self.translations_lens)
         if ret is True:
-            d = - ray.origin[2]/ray.orientation[2]
+            d = - ray.origin[2] / ray.orientation[2]
             intersection_point = ray.origin + d * ray.orientation
         else:
             raise ValueError("Projection from object point does not intersect the lens")
@@ -210,12 +212,12 @@ class Mirror(object):
     .. [1] "Spherical coordinatse", wikipedia
         https://en.wikipedia.org/wiki/Spherical_coordinate_system#Unique_coordinates.
     """
+
     def __init__(self, theta, phi, r):
         self.orientation = np.array([np.cos(phi) * np.sin(theta),
                                      np.sin(phi) * np.sin(theta),
                                      np.cos(theta)])
         self.origin = r * self.orientation
-
 
     @classmethod
     def from_point_normal(cls, origin, orientation):
@@ -227,7 +229,7 @@ class Mirror(object):
         obj.orientation = orientation
         return obj
 
-    @property  
+    @property
     def orientation(self):
         return self._orientation
 
@@ -235,7 +237,7 @@ class Mirror(object):
     def orientation(self, orientation):
         self._orientation = orientation / np.linalg.norm(np.array(orientation))
 
-    def update(self, theta,phi, r):
+    def update(self, theta, phi, r):
         self.orientation = np.array([np.cos(phi) * np.sin(theta),
                                      np.sin(phi) * np.sin(theta),
                                      np.cos(theta)])
@@ -273,15 +275,15 @@ class Mirror(object):
         n = self.orientation
         l0 = line.origin
         l = line.orientation
-        
+
         # Check for parallel case
         dot_product = np.dot(l, n)
         if dot_product == 0:
-            raise ZeroDivisionError("Line does not intersect with a mirror " + 
+            raise ZeroDivisionError("Line does not intersect with a mirror " +
                                     "plane because they are parallel")
         d = np.dot(p0 - l0, n) / dot_product
-        p = l0 + d*l
-        return p
+        p = l0 + d * l
+        return np.array(p)
 
     def reflect_ray(self, line):
         """
@@ -313,10 +315,10 @@ class Mirror(object):
         # Rename variables according to wikipedia's convention
         v = line.orientation
         a = self.orientation
-        
+
         # Calculate intersection point.
         intersection_point = self.intersect(line)
-        
+
         # calculate reflected ray.
         dot_product = np.dot(v, a)
         if np.isclose(abs(dot_product), 1, rtol=1e-8):
@@ -324,14 +326,14 @@ class Mirror(object):
                               "because the mirror is perpendicular to the ray.")
         reflected_line_orientation = v - 2 * dot_product / np.dot(a, a) * a
         return Line(intersection_point, reflected_line_orientation)
-    
+
     def reflect_point(self, point):
         # define normal from point towards plane
         n = Line(point, self.orientation)
-        
+
         # intersect new line with plane
         proj_point = self.intersect(n)
-        
+
         # mirror point = 2*(proj_point - point) + point
         mirror_point = proj_point + (proj_point - point)
         return np.array(mirror_point)
@@ -371,19 +373,19 @@ class TargetSystem(object):
         Rotation matrix from the local target coordinates to the gloval
         sensor coordinates.
     """
+
     def __init__(self, tx, ty, tz, r1, r2, r3):
         self.tranvector = np.array([tx, ty, tz])
-        rot = R.from_rotvec(np.array([r1,r2,r3]))
+        rot = R.from_rotvec(np.array([r1, r2, r3]))
         self.rotmatrix = rot.as_matrix()
 
     def update(self, tx, ty, tz, r1, r2, r3):
         self.tranvector = np.array([tx, ty, tz])
-        rot = R.from_rotvec(np.array([r1,r2,r3]))
+        rot = R.from_rotvec(np.array([r1, r2, r3]))
         self.rotmatrix = rot.as_matrix()
 
     def to_local(self, global_point):
-        local_point = np.dot(np.linalg.inv(self.rotmatrix),
-                             global_point - self.tranvector)
+        local_point = np.dot(np.linalg.inv(self.rotmatrix), global_point - self.tranvector)
         return local_point
 
     def to_global(self, local_point):
@@ -393,3 +395,7 @@ class TargetSystem(object):
     def create_ray(self, point, focal):
         global_point = self.to_global(point)
         return Line(global_point, focal - global_point)
+
+
+if __name__ == '__main__':
+    print("statement")
