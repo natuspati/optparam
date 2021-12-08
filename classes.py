@@ -9,7 +9,8 @@ import numpy as np
 import cv2 as cv
 from pathlib import Path
 
-from targets import *
+from targets import Checkerboard, Circles
+
 
 class Line(object):
     """
@@ -22,30 +23,31 @@ class Line(object):
     orientation : ndarray
         The direction of line.
     
-    Attribute
-    ---------
+    Attributes
+    ----------
     origin : ndarray
         Any point belonging to the line.
     orientation : ndarray
         The normalized direction of line.
     """
+
     def __init__(self, origin, orientation):
         self.origin = np.array(origin)
-        self.orientation = orientation
+        self.orientation = np.array(orientation)
 
-    @property  
+    @property
     def orientation(self):
         return self._orientation
-    
+
     @orientation.setter
     def orientation(self, orientation):
         self._orientation = orientation / np.linalg.norm(np.array(orientation))
-        
+
     def intersect_ray(self, other):
         """
         Intersect this Line with another one.
         
-        Impementation of the closest intersection point as described by the
+        Implementation of the closest intersection point as described by the
         midpoint method [1]_.
 
         Parameters
@@ -63,23 +65,33 @@ class Line(object):
         .. [1] "Mid Point Method", wikipedia
             https://en.wikipedia.org/wiki/Skew_lines#Nearest_points.
         """
-        # Rename variables acording to wikipedia's convention.
+        # Rename variables according to wikipedia's convention.
         p1 = self.origin
         p2 = other.origin
         d1 = self.orientation
         d2 = other.orientation
-        
+
         # Perform the midpont method.
         n = np.cross(d1, d2)
         n1 = np.cross(d1, n)
         n2 = np.cross(d2, n)
         c1 = p1 + np.dot((p2 - p1), n2) / np.dot(d1, n2) * d1
         c2 = p2 + np.dot((p1 - p2), n1) / np.dot(d2, n1) * d2
-        
+
         # Find midpoint and error.
         point = (c1 + c2) / 2
         error = np.linalg.norm(c2 - c1)
         return point, error, c1, c2
+
+    def intersect_point(self, point):
+        line_to_point = np.array(point - self.origin)
+        line_to_point = line_to_point / np.linalg.norm(line_to_point)
+        if np.allclose(self.orientation, line_to_point) or \
+                np.allclose(self.orientation, -line_to_point):
+            ret = True
+        else:
+            ret = False
+        return ret
 
 
 class ImageContainer(object):
@@ -113,17 +125,18 @@ class ImageContainer(object):
     
     [1] https://docs.python.org/3/library/pathlib.html.
     """
-    def __init__(self, path):     
-        self.stereoimgs = list(map(str,list(Path(path).glob("*.jpg"))))
-        img =  cv.imread(self.stereoimgs[0])
+
+    def __init__(self, path):
+        self.stereoimgs = list(map(str, list(Path(path).glob("*.jpg"))))
+        img = cv.imread(self.stereoimgs[0])
         self.imgsize = (img.shape[0], img.shape[1])
         self.criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-        self.objpoints_left = []
-        self.objpoints_right = []
+        self.objpoints = []
         self.imgpoints_left = []
         self.imgpoints_right = []
 
-    def _img_split(self, img):
+    @staticmethod
+    def _img_split(img):
         """
         Split images on left and right sides.
 
@@ -142,12 +155,12 @@ class ImageContainer(object):
         """
         mid_point = img.shape[1] // 2
         blck = np.zeros_like(img, dtype=np.uint8)
-        
+
         img_left = blck.copy()
         img_right = blck.copy()
-        
-        img_left[:,:mid_point,:] = img[:,:mid_point,:]
-        img_right[:,mid_point:,:] = img[:,mid_point:,:]
+
+        img_left[:, :mid_point, :] = img[:, :mid_point, :]
+        img_right[:, mid_point:, :] = img[:, mid_point:, :]
         return [img_left, img_right]
 
     def extract(self, target):
@@ -172,7 +185,8 @@ class ImageContainer(object):
         None.
 
         """
-        for index, img_path in enumerate(self.stereoimgs):
+        self.objpoints = target.gridpoints
+        for img_path in self.stereoimgs:
             img = cv.imread(img_path)
             [img_left, img_right] = self._img_split(img)
 
@@ -207,13 +221,24 @@ class ImageContainer(object):
                 raise NotImplementedError("Target type is not implemented.")
 
             if ret_left is True and ret_right is True:
-                self.objpoints_left.append(target.gridpoints)
                 self.imgpoints_left.append(corners_left)
-
-                self.objpoints_right.append(target.gridpoints)
                 self.imgpoints_right.append(corners_right)
             else:
-                raise RuntimeError("Target could not be detected properly" +
-                                    f", img = {index}")
+                raise RuntimeError("Target could not be detected properly." +
+                                   f"\n img path = {img_path}")
 
-                
+
+# class SingleCameraCalibration(object):
+#     def __init__(self, objpoints, imgpoints):
+#         ret, mtx, dist, rvecs, tves = cv.calibrateCamera()
+#         self.matrix = 
+#         self.distortion = 
+#         self.recs = 
+#         self.tvecs = 
+
+
+if __name__ == "__main__":
+    cb = Checkerboard(8, 11, 15)
+    imgcon = ImageContainer("testimgs")
+    img_size = imgcon.imgsize
+    imgcon.extract(cb)
