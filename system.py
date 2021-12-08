@@ -111,8 +111,8 @@ class Camera(object):
     """
 
     def __init__(self, img_size, mx, my, focalx, focaly, focalz):
-        self.mx = 10 * mx
-        self.my = 10 * my
+        self.mx = mx
+        self.my = my
         self.u0 = img_size[1] / 2
         self.v0 = img_size[0] / 2
         self.translations_lens = np.array([focalx, focaly, focalz])
@@ -121,8 +121,8 @@ class Camera(object):
     #     self.translations_lens = np.array([focalx, focaly, focalz])
 
     def update(self, mx, my, focalx, focaly, focalz):
-        self.mx = 10 * mx
-        self.my = 10 * my
+        self.mx = mx
+        self.my = my
         self.translations_lens = np.array([focalx, focaly, focalz])
 
     def pixel_to_coordinate(self, pixel_position):

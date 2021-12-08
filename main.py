@@ -105,7 +105,7 @@ if __name__ == "__main__":
     plt.close("all")
     plotter = PlotContainer()
     plotted_img = 0
-    no_fvals = 100
+    no_fvals = 10000
     exit_flags = ["Iteration limit", "gtol", "ftol", "xtol"]
 
     # create checkerboard and image container
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     imgcon = ImageContainer("testimgs")
     img_size = imgcon.imgsize
     imgcon.extract(cb)
-    no_imgs_considered = 2
+    no_imgs_considered = 1
 
     # initialize objects from initial guesses (easily observed parameters)
     theta_in = np.pi - np.pi / 4
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     phi_right = 0
     dist_bw_mirrors = 40
     dist_to_lens = 15
-    mx, my = [2.82/10000]*2
+    mx, my = [2.82/1000]*2
     focalz = 4.4
     focalx, focaly = 0, 0
 
@@ -189,6 +189,8 @@ if __name__ == "__main__":
 
     parameters = np.hstack((system_parameters, target_parameters))
     evec = objfun(parameters, syst, targets, imgcon)
+    initial_guess_recon_left, initial_guess_recon_right = reconstruct_image(syst, targets.tlst[0],
+                                                                            imgcon.objpoints)
 
     # making sparse matrix for Jacobian
     points_per_image = 2 * cb.gridpoints.shape[0]
@@ -238,60 +240,23 @@ if __name__ == "__main__":
     mtx = csc_matrix((data, indices, indptrs),
                      shape=(tot_points, no_parameters))
 
-    # res_lm = least_squares(objfun, parameters, method='lm', verbose=1, max_nfev=no_fvals, xtol=1e-15,
-    #                        ftol=1e-8, args=(syst, targets, imgcon))
-    # print("LM algorithm exit flag: " + exit_flags[res_lm.status])
-    # lm_projections_left = []
-    # lm_projections_right = []
-    # for i in range(no_imgs_considered):
-    #     lm_projection_left, lm_projection_right = reconstruct_image(syst, targets.tlst[i], imgcon.objpoints)
-    #     lm_projections_left.append(lm_projection_left)
-    #     lm_projections_right.append(lm_projection_right)
-    # res_trf = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15,
-    #                        ftol=1e-8, args=(syst, targets, imgcon))
-    # print("TRF algorithm exit flag: " + exit_flags[res_trf.status])
-    # trf_projections_left = []
-    # trf_projections_right = []
-    # for i in range(no_imgs_considered):
-    #     trf_projection_left, trf_projection_right = reconstruct_image(syst, targets.tlst[i], imgcon.objpoints)
-    #     trf_projections_left.append(trf_projection_left)
-    #     trf_projections_right.append(trf_projection_right)
-    #
-    # projdict = {"Initial guess": (projections_left[plotted_img], projections_right[plotted_img]),
-    #             "Optimized solution LM": (lm_projections_left[plotted_img], lm_projections_right[plotted_img]),
-    #             "Optimized solution TRF": (trf_projections_left[plotted_img], trf_projections_right[plotted_img])}
-    # plotname = str("plots/projection_plot.png")
-    # plotter.projections_on_img(imgcon.stereoimgs[plotted_img], projdict, plotname)
+    res_trf_sparse = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15,
+                                   ftol=1e-8, x_scale='jac', jac_sparsity=mtx, args=(syst, targets, imgcon))
+    print("TRF algorithm with sparsity exit flag: " + exit_flags[res_trf_sparse.status])
+    trf_sparse_projections_left = []
+    trf_sparse_projections_right = []
+    for i in range(no_imgs_considered):
+        trf_sparse_projection_left, trf_sparse_projection_right = reconstruct_image(syst, targets.tlst[i],
+                                                                                    imgcon.objpoints)
+        trf_sparse_projections_left.append(trf_sparse_projection_left)
+        trf_sparse_projections_right.append(trf_sparse_projection_right)
 
-    # res_trf_scaled = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15,
-    #                                ftol=1e-8, x_scale='jac', args=(syst, targets, imgcon))
-    # print("TRF algorithm with scaling exit flag: " + exit_flags[res_trf_scaled.status])
-    # trf_scaled_projections_left = []
-    # trf_scaled_projections_right = []
-    # for i in range(no_imgs_considered):
-    #     trf_scaled_projection_left, trf_scaled_projection_right = reconstruct_image(syst, targets.tlst[i], imgcon.objpoints)
-    #     trf_scaled_projections_left.append(trf_scaled_projection_left)
-    #     trf_scaled_projections_right.append(trf_scaled_projection_right)
-    #
-    # res_trf_sparse = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15,
-    #                                ftol=1e-8, x_scale='jac', jac_sparsity=mtx, args=(syst, targets, imgcon))
-    # print("TRF algorithm with sparsity exit flag: " + exit_flags[res_trf_sparse.status])
-    # trf_sparse_projections_left = []
-    # trf_sparse_projections_right = []
-    # for i in range(no_imgs_considered):
-    #     trf_sparse_projection_left, trf_sparse_projection_right = reconstruct_image(syst, targets.tlst[i],
-    #                                                                                 imgcon.objpoints)
-    #     trf_sparse_projections_left.append(trf_sparse_projection_left)
-    #     trf_sparse_projections_right.append(trf_sparse_projection_right)
-    #
-    # projdict = {"TRF": (trf_projections_left[plotted_img], trf_projections_right[plotted_img]),
-    #             "TRF, scaled with Jacobian": (trf_scaled_projections_left[plotted_img],
-    #                                           trf_scaled_projections_right[plotted_img]),
-    #             "TRF, sparse Jacobian": (trf_sparse_projections_left[plotted_img],
-    #                                      trf_sparse_projections_right[plotted_img])}
-    # plotname = str("plots/different_trf_plot.png")
-    # plotter.projections_on_img(imgcon.stereoimgs[plotted_img], projdict, plotname)
-    #
+    projdict = {"Initial guess": (initial_guess_recon_left, initial_guess_recon_right),
+                "TRF, sparse Jacobian": (trf_sparse_projections_left[plotted_img],
+                                         trf_sparse_projections_right[plotted_img])}
+    plotname = str("plots/different_trf_plot.png")
+    plotter.projections_on_img(imgcon.stereoimgs[plotted_img], projdict, plotname)
+
     # xbounds = np.vstack(([(0, np.pi),(0,2*np.pi),(-np.inf,np.inf)]*4,
     #                    [(-np.inf,np.inf)]*11))
     # xbounds = xbounds.T
@@ -299,122 +264,3 @@ if __name__ == "__main__":
     # res_trf_bounded = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15,
     #                                 ftol=1e-8, x_scale='jac', jac_sparsity=mtx, bounds=xtuple,
     #                                 args=(syst, targets, imgcon))
-    # print("TRF algorithm with bounds exit flag: " + exit_flags[res_trf_bounded.status])
-    # trf_bounded_projections_left = []
-    # trf_bounded_projections_right = []
-    # for i in range(no_imgs_considered):
-    #     trf_bounded_projection_left, trf_bounded_projection_right = reconstruct_image(syst, targets.tlst[i],
-    #                                                                                 imgcon.objpoints)
-    #     trf_bounded_projections_left.append(trf_bounded_projection_left)
-    #     trf_bounded_projections_right.append(trf_bounded_projection_right)
-    #
-    # projdict = {"Initial Guess": (projections_left[plotted_img], projections_right[plotted_img]),
-    #             "TRF, with bounds": (trf_bounded_projections_left[plotted_img],
-    #                                  trf_bounded_projections_right[plotted_img])}
-    # plotname = str("plots/bounded_trf.png")
-    # plotter.projections_on_img(imgcon.stereoimgs[plotted_img], projdict, plotname)
-    
-    # # reconstructing after optimization
-    # optimized_left = []
-    # optimized_right = []
-    # for i in range(no_imgs_considered):
-    #     projection_left, projection_right = reconstruct_image(system,
-    #                                                           targets.tlst[i],
-    #                                                           imgcon.objpoints)
-    #     optimized_left.append(projection_left)
-    #     optimized_right.append(projection_right)
-
-    sols = []
-    Tzlst = list(range(560,561))
-    for Tzvar in Tzlst:
-        parameters[19] = Tzvar
-        res_trf_sparse = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15,
-                                       ftol=1e-8, x_scale='jac', jac_sparsity=mtx, args=(syst, targets, imgcon))
-        print("TRF algorithm with sparsity exit flag: " + exit_flags[res_trf_sparse.status])
-        sols.append(res_trf_sparse.x)
-    sols = np.array(sols).T
-    # ys = sols[19]
-    # yss = sols[1] * 180/np.pi
-    # fig1, ax1 = plt.subplots()
-    # ax1.plot(Tzlst, ys)
-    # # ax1.plot(Tzlst, yss)
-    # ax1.set_xlabel(f"Initial guess $T_z$, mm")
-    # ax1.set_ylabel(f"Converged $T_z$, mm")
-    # ax1.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-    # # ax1.legend([r"$\theta_{left, inner}$", r"$\varphi_{left, inner}$"])
-    # fig1.savefig("plots/lmTz.png", format="png", transparent=True)
-    # %%
-    # data = {'parameter': [r'$\theta_{in}$', r'$\phi_{left}$',r'$ r_{left, inner}$',
-    #                       r'$\theta_{ou}$',r'$ \phi_{left}$',r'$ r_{left, outer}$',
-    #                       r'$\theta_{in}$',r'$ \phi_{right}$',r'$ r_{right, inner}$',
-    #                       r'$\theta_{ou}$',r'$ \phi_{right}$',r'$ r_{right, outer}$',
-    #                       r'$focal_x$',r'$ focal_y$',r'$ focal_z$',
-    #                       r'$m_x$',r'$ m_y$',
-    #                       r'$T_x$', r'$T_y$', r'$T_z$',
-    #                       r'$r_1$',r'$r_2$',r'$r_3$'],
-    #         'initial guess': list(parameters),
-    #         'solution LM' : list(res1.x),
-    #         'solution TRF' : list(res2.x)}
-    # df = pd.DataFrame(data)
-    # print(df.to_latex(index=False))
-
-    # fig  = ff.create_table(df)
-    # fig.update_layout(autosize=False,
-    #                   width=500,
-    #                   height=200)
-    # fig.write_image("testingtables.png",scale=2)
-    # fig.show()
-    # df.set_index('parameter')
-    # g = sns.heatmap(df, cmap='Blues', annot=True, fmt='g')
-    # g.get_figure()
-
-    # plt.close('all')
-    # fig, ax = plt.subplots()
-    # fig.patch.set_visible(False)
-    # ax.axis('off')
-    # table = ax.table(cellText=df.values, colLabels=df.columns, loc='center')
-    # table.set_fontsize(20)
-    # # fig.tight_layout()
-    # plt.show()
-    # a = trf.passlist
-    # np.savetxt('forplotting1.csv', a, delimiter=',')
-
-    # plt.close("all")
-    # plt.bar(np.arange(len(a[-1])), a[-1])
-    # ax = plt.gca()
-    # ax.set_yscale('log')
-    # plt.xlabel('parameter', fontsize=16)
-    # plt.ylabel('gradient value', fontsize=16)
-    # plt.yticks(fontsize=16)
-    # plt.xticks(ticks=np.arange(len(a[-1])),
-    #            labels=['theta_in', 'phi_left', 'r_left_inner',
-    #                    'theta_ou', 'phi_left', 'r_left_outer',
-    #                    'theta_in', 'phi_right', 'r_right_inner',
-    #                    'theta_ou', 'phi_right', 'r_right_outer',
-    #                    'focalx', 'focaly', 'focalz',
-    #                    'mx', 'my',
-    #                    'Tx', 'Ty', 'Tz',
-    #                    'r1', 'r2', 'r3'], rotation=90, fontsize=16)
-
-    # plt.close("all")
-    # img1 = plt.imread(imgcon.stereoimgs[0])
-    # plt.imshow(img1)
-
-    # # rpoints_left = projections_left[0]
-    # # rpoints_right = projections_right[0]
-    # # xs = np.hstack((rpoints_left[:,0], rpoints_right[:,0]))
-    # # ys = np.hstack((rpoints_left[:,1], rpoints_right[:,1]))
-    # # plt.scatter(xs, ys, s=100, facecolors='none', edgecolors='b') 
-
-    # opoints_left = optimized_left[0]
-    # opoints_right = optimized_right[0]
-    # xs = np.hstack((opoints_left[:,0], opoints_right[:,0]))
-    # ys = np.hstack((opoints_left[:,1], opoints_right[:,1]))
-    # plt.scatter(xs, ys, s=100, facecolors='none', edgecolors='g')
-
-    # ipoints_left = imgcon.imgpoints_left[0].reshape(70,2)
-    # ipoints_right = imgcon.imgpoints_right[0].reshape(70,2)
-    # xs = np.hstack((ipoints_left[:,0], ipoints_right[:,0]))
-    # ys = np.hstack((ipoints_left[:,1], ipoints_right[:,1]))
-    # plt.scatter(xs, ys, s=100, facecolors='none', edgecolors='r') 
-    # plt.show()
