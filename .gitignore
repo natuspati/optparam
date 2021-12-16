@@ -1,3 +1,7 @@
+plots/
+
+csvs/
+
 cold\ state\ sep\ 27/
 
 warm\ state\ sep\ 27/
@@ -5,5 +9,9 @@ warm\ state\ sep\ 27/
 twod\ images\ sep\ 27/
 
 *.xlsx
-
 *.csv
+*.jpg
+*.jpeg
+*.tif
+*.tiff
+*.png
