@@ -146,7 +146,7 @@ class Camera(object):
         coordinate = np.array([x, y, 0])
         return coordinate
 
-    def create_ray(self, pixel_position):
+    def create_ray_from_sensor(self, pixel_position):
         """
         Ray from a point on a sensor.
         
@@ -165,6 +165,28 @@ class Camera(object):
         sensor_position = self.pixel_to_coordinate(pixel_position)
         ray = self.translations_lens - sensor_position
         return Line(self.translations_lens, ray)
+
+    def project_point_on_sensor(self, point):
+        """
+        Project a point in global coordinate system on sensor plane.
+
+        A point in global coordinate system casts a Line object towards the focal and finds intersection with the sensor
+        plane in image coordinates u, v.
+
+        Parameters
+        ----------
+        point : ndarray
+            Point in global coordinate system.
+
+        Returns
+        -------
+        sensor_position : ndarray
+            Position in image coordinates u, v.
+
+        """
+        ray = Line(point, self.translations_lens - point)
+        sensor_position = self.intersect_ray(ray)
+        return sensor_position
 
     def intersect_ray(self, ray):
         ret = ray.intersect_point(self.translations_lens)
@@ -392,10 +414,16 @@ class TargetSystem(object):
         global_point = np.dot(self.rotmatrix, local_point) + self.tranvector
         return global_point
 
-    def create_ray(self, point, focal):
+    def create_ray_from_local(self, point, focal):
         global_point = self.to_global(point)
         return Line(global_point, focal - global_point)
 
 
 if __name__ == '__main__':
-    print("statement")
+    t1 = TargetSystem(0,0,10,0,0,-np.pi/2)
+    x = np.array([1,0,0])
+    y = np.array([0,1,0])
+    z = np.array([0,0,1])
+    print(t1.to_global(x))
+    print(t1.to_global(y))
+    print(t1.to_global(z))

@@ -126,8 +126,8 @@ class ImageContainer(object):
     [1] https://docs.python.org/3/library/pathlib.html.
     """
 
-    def __init__(self, path):
-        self.stereoimgs = list(map(str, list(Path(path).glob("*.jpg"))))
+    def __init__(self, path, ext):
+        self.stereoimgs = list(map(str, list(Path(path).glob(ext))))
         img = cv.imread(self.stereoimgs[0])
         self.imgsize = (img.shape[0], img.shape[1])
         self.criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -207,15 +207,13 @@ class ImageContainer(object):
                                              None)
 
             elif isinstance(target, Circles):
-                ret_left, corners_left = \
-                    cv.findCirclesGrid(gray_img_left,
-                                       target.pattrern_size,
-                                       flags=cv.CALIB_CB_SYMMETRIC_GRID)
+                ret_left, corners_left = cv.findCirclesGrid(gray_img_left,
+                                                            target.pattern_size,
+                                                            flags=cv.CALIB_CB_ASYMMETRIC_GRID)
 
-                ret_right, corners_right = \
-                    cv.findCirclesGrid(gray_img_right,
-                                       target.pattrern_size,
-                                       flags=cv.CALIB_CB_SYMMETRIC_GRID)
+                ret_right, corners_right = cv.findCirclesGrid(gray_img_right,
+                                                              target.pattern_size,
+                                                              flags=cv.CALIB_CB_ASYMMETRIC_GRID)
 
             else:
                 raise NotImplementedError("Target type is not implemented.")

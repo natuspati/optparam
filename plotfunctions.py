@@ -7,9 +7,9 @@ class PlotContainer(object):
     def __init__(self):
         self.colorlist = ["C0", "C1", "C2", "C3", "C4", "C5", "C6"]
         self.fsize = (16, 10)
-        self.markersize = 40
+        self.markersize = 100
 
-    def projections_on_img(self, imgpath, projections_dict, plotname):
+    def projections_on_img(self, imgpath, projections_dict, path=None):
         fig, ax = plt.subplots(figsize=self.fsize)
         fig.patch.set_facecolor('None')
         ax.imshow(plt.imread(imgpath))
@@ -21,4 +21,5 @@ class PlotContainer(object):
             ax.scatter(xs, ys, label=projection_label,  s=self.markersize, facecolors='none',
                        edgecolors=self.colorlist[index])
         ax.legend(fontsize=20)
-        # fig.savefig(Path(plotname), format="png")
+        if path:
+            fig.savefig(Path(path), format="png")
