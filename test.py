@@ -5,7 +5,7 @@ from targets import Circles, Checkerboard
 from classes import Line, ImageContainer
 import img2pdf, sys, os, time
 import matplotlib.pyplot as plt
-
+import matlab.engine
 
 def split_fun(original_str, index):
     split_str = original_str.split(',')
@@ -18,14 +18,17 @@ def split_fun(original_str, index):
 
 
 if __name__ == '__main__':
-    plt.close("all")
-    plt.rcParams['font.size'] = '16'
+    eng = matlab.engine.start_matlab()
+    eng.quit()
 
-    # cs = np.loadtxt("csvs\\costs10.csv", delimiter=",")
-    # cs = cs[:,0]
-
-    for i, el in enumerate(cs):
-        cs[i] = el/(i+1)
+    # plt.close("all")
+    # plt.rcParams['font.size'] = '16'
+    #
+    # # cs = np.loadtxt("csvs\\costs10.csv", delimiter=",")
+    # # cs = cs[:,0]
+    #
+    # for i, el in enumerate(cs):
+    #     cs[i] = el/(i+1)
 
     # xs = list(range(1,len(cs)+1))
     # fig, ax = plt.subplots(figsize=(12, 8))
@@ -38,26 +41,26 @@ if __name__ == '__main__':
     # ax.set_xticks(xs)
     # fig.savefig("plots\\evol10cost.png", dpi='figure', format='png', pad_inches=0.0)
 
-    df = pd.read_csv("csvs\\num_imgs_12_bounded100.csv", delimiter=',',index_col=0)
-
-    fig, ax = plt.subplots(figsize=(12, 8))
-    fig.patch.set_facecolor('None')
-    xs = list(range(len(df.columns) - 1))
-
-    syst = df.iloc[:17,1:]
-    a = list(range(12))
-    b = a[2::3]
-    a = set(a)
-    b = set(b)
-    angles = a - b
-    for i in range(17):
-        if i in angles:
-            syst.iloc[i] = syst.iloc[i] * 180 / np.pi
-        elif i in {15,16}:
-            syst.iloc[i] = syst.iloc[i] * 1000
-
-
-    counter=0
+    # df = pd.read_csv("csvs\\num_imgs_12_bounded100.csv", delimiter=',',index_col=0)
+    #
+    # fig, ax = plt.subplots(figsize=(12, 8))
+    # fig.patch.set_facecolor('None')
+    # xs = list(range(len(df.columns) - 1))
+    #
+    # syst = df.iloc[:17,1:]
+    # a = list(range(12))
+    # b = a[2::3]
+    # a = set(a)
+    # b = set(b)
+    # angles = a - b
+    # for i in range(17):
+    #     if i in angles:
+    #         syst.iloc[i] = syst.iloc[i] * 180 / np.pi
+    #     elif i in {15,16}:
+    #         syst.iloc[i] = syst.iloc[i] * 1000
+    #
+    #
+    # counter=0
 
 
     # focal_labels = [r"$focal_{x}$", r"$focal_{y}$", r"$focal_{z}$"]
@@ -112,23 +115,23 @@ if __name__ == '__main__':
     # ax.grid(visible=True, which='both', axis='both')
     # fig.savefig("plots\\evol12mdists.png", dpi='figure', format='png', pad_inches=0.0)
 
-    angle_labels = [r"$\theta_{left, in}$", r"$\phi_{left,in}$",r"$\theta_{left, ou}$", r"$\phi_{left,ou}$",
-                    r"$\theta_{right, in}$", r"$\phi_{right,in}$",r"$\theta_{right, ou}$", r"$\phi_{right,ou}$"]
-    angle_markers = ["o", "s", "P", "X"] * 2
-    angle_colors = ['C0', 'C0', 'b', 'b', 'C1', 'C1', 'orange', 'orange']
-    angle_ecolors = ['face', 'none'] * 4
-    counter= 0
-    for i in angles:
-        ax.scatter(xs, syst.iloc[i], label=angle_labels[counter], marker=angle_markers[counter], s=100,
-                   facecolors='none', edgecolors=angle_colors[counter])
-        counter+=1
-    ax.legend(loc='upper center', bbox_to_anchor=(0.8, 0.5), ncol=2, fancybox=True, shadow=True)
-    ax.set_xlabel("Number of images in optimization, $I$")
-    ax.set_ylabel(r"Angle, $^o$")
-    ax.set_xticks(list(range(13)))
-    ax.set_yticks(list(range(0,200,20)))
-    ax.grid(visible=True, which='both', axis='both')
-    fig.savefig("plots\\evol12angles.png", dpi='figure', format='png', pad_inches=0.0)
+    # angle_labels = [r"$\theta_{left, in}$", r"$\phi_{left,in}$",r"$\theta_{left, ou}$", r"$\phi_{left,ou}$",
+    #                 r"$\theta_{right, in}$", r"$\phi_{right,in}$",r"$\theta_{right, ou}$", r"$\phi_{right,ou}$"]
+    # angle_markers = ["o", "s", "P", "X"] * 2
+    # angle_colors = ['C0', 'C0', 'b', 'b', 'C1', 'C1', 'orange', 'orange']
+    # angle_ecolors = ['face', 'none'] * 4
+    # counter= 0
+    # for i in angles:
+    #     ax.scatter(xs, syst.iloc[i], label=angle_labels[counter], marker=angle_markers[counter], s=100,
+    #                facecolors='none', edgecolors=angle_colors[counter])
+    #     counter+=1
+    # ax.legend(loc='upper center', bbox_to_anchor=(0.8, 0.5), ncol=2, fancybox=True, shadow=True)
+    # ax.set_xlabel("Number of images in optimization, $I$")
+    # ax.set_ylabel(r"Angle, $^o$")
+    # ax.set_xticks(list(range(13)))
+    # ax.set_yticks(list(range(0,200,20)))
+    # ax.grid(visible=True, which='both', axis='both')
+    # fig.savefig("plots\\evol12angles.png", dpi='figure', format='png', pad_inches=0.0)
 
 
 
