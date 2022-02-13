@@ -1,16 +1,16 @@
-plots/
+plots/*
 
-csvs/
+csvs/*
 
-twod\ images\ sep\ 27/
+twod\ images\ sep\ 27/*
 
-twodimgs1/
+twodimgs1/*
 
-testimgs1/
-testimgs2/
-testimgs3/
-testigms4/
-testimgs5/
+testimgs1/*
+testimgs2/*
+testimgs3/*
+testigms4/*
+testimgs5/*
 
 __pychach__/
 
