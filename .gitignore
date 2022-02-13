@@ -6,11 +6,13 @@ twod\ images\ sep\ 27/
 
 twodimgs1/
 
-testimgs**/
+testimgs1/
+testimgs2/
+testimgs3/
+testimgs4/
+testimgs5/
 
-!testimgs6/
-
-__pychachd__/
+__pychache__/
 
 *.xlsx
 *.csv
