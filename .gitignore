@@ -6,14 +6,14 @@ twod\ images\ sep\ 27/
 
 twodimgs1/
 
-testings/
+testimgs/
 testimgs1/
 testimgs2/
 testimgs3/
 testimgs4/
 testimgs5/
 
-__pychache__/
+__pycache__/
 
 *.xlsx
 *.csv
