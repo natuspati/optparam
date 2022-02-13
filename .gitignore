@@ -8,6 +8,8 @@ twodimgs1/
 
 testimgs**/
 
+!testimgs6/
+
 __pychachd__/
 
 *.xlsx
