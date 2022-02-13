@@ -2,11 +2,17 @@ plots/
 
 csvs/
 
-cold\ state\ sep\ 27/
-
-warm\ state\ sep\ 27/
-
 twod\ images\ sep\ 27/
+
+twodimgs1/
+
+testimgs1/
+testimgs2/
+testimgs3/
+testigms4/
+testimgs5/
+
+__pychach__/
 
 *.xlsx
 *.csv
@@ -15,3 +21,4 @@ twod\ images\ sep\ 27/
 *.tif
 *.tiff
 *.png
+*.dng

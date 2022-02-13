@@ -192,177 +192,13 @@ if __name__ == "__main__":
     plotter = PlotContainer()
     plotted_img = 0
     breaking_no = 100
-    no_fvals = 500
+    no_fvals = 5000
     exit_flags = ["Iteration limit", "gtol", "ftol", "xtol"]
 
     # create target pattern and image container
     target_pattern = Checkerboard(8, 11, 15)
 
-    costs = []
-    for i in range(1):
-        # imgcon = ImageContainer("testimgs5\\i" + str(i+1), "*.tif")
-        # img_size = imgcon.imgsize
-        # imgcon.extract(target_pattern)
-        # no_imgs_considered = 1
-        #
-        # # initialize objects from initial guesses (easily observed parameters)
-        # theta_in = np.pi - np.pi / 4
-        # theta_ou = np.pi - 52 * np.pi / 180
-        # phi_left = np.pi
-        # phi_right = 0
-        # dist_bw_mirrors = 40
-        # dist_to_lens = 15
-        # mx, my = [3 / 1000] * 2
-        # focalz = 2.2
-        # focalx, focaly = 0, 0
-        #
-        # # find r parameter of the mirrors
-        # left_inner_fixed = Mirror(theta_in, phi_left, 0)
-        # left_inner_fixed.origin = np.array([0, 0, dist_to_lens + focalz])
-        # line_left_inner = Line(np.array([0, 0, 0]), left_inner_fixed.orientation)
-        # point_left_inner = left_inner_fixed.intersect(line_left_inner)
-        # r_left_inner = point_left_inner[0] / left_inner_fixed.orientation[0]
-        #
-        # left_outer_fixed = Mirror(theta_ou, phi_left, 0)
-        # left_outer_fixed.origin = np.array([-dist_bw_mirrors / 2, 0, dist_to_lens + focalz])
-        # line_left_outer = Line(np.array([0, 0, 0]), left_outer_fixed.orientation)
-        # point_left_outer = left_outer_fixed.intersect(line_left_outer)
-        # r_left_outer = point_left_outer[0] / left_outer_fixed.orientation[0]
-        #
-        # right_inner_fixed = Mirror(theta_in, phi_right, 0)
-        # right_inner_fixed.origin = np.array([0, 0, dist_to_lens + focalz])
-        # line_right_inner = Line(np.array([0, 0, 0]), right_inner_fixed.orientation)
-        # point_right_inner = right_inner_fixed.intersect(line_right_inner)
-        # r_right_inner = point_right_inner[0] / right_inner_fixed.orientation[0]
-        #
-        # right_outer_fixed = Mirror(theta_ou, phi_right, 0)
-        # right_outer_fixed.origin = np.array([dist_bw_mirrors / 2, 0, dist_to_lens + focalz])
-        # line_right_outer = Line(np.array([0, 0, 0]), right_outer_fixed.orientation)
-        # point_right_outer = right_outer_fixed.intersect(line_right_outer)
-        # r_right_outer = point_right_outer[0] / right_outer_fixed.orientation[0]
-        #
-        # # define initial translations and rotations towards the target
-        # # tx, ty, tz = 0.0, 0.0, 272.0
-        # # rx, ry, rz = 0.0, 0.0, np.pi / 2
-        #
-        # tx, ty, tz = 30.0, -40.0, 300.0
-        # rx, ry, rz = 0.0, 0.0, -np.pi / 2
-        # rot = R.from_euler('xyz', np.array([rx, ry, rz]))
-        # [r1, r2, r3] = rot.as_rotvec()
-        #
-        # # create objects of the optical path
-        # cam = Camera(img_size, mx, my, focalx, focaly, focalz)
-        # left_inner = Mirror(theta_in, phi_left, r_left_inner)
-        # left_outer = Mirror(theta_ou, phi_left, r_left_outer)
-        # right_inner = Mirror(theta_in, phi_right, r_right_inner)
-        # right_outer = Mirror(theta_ou, phi_right, r_right_outer)
-        # syst = System(cam, left_inner, left_outer, right_inner, right_outer)
-        #
-        # system_parameters = np.array([theta_in, phi_left, r_left_inner,
-        #                               theta_ou, phi_left, r_left_outer,
-        #                               theta_in, phi_right, r_right_inner,
-        #                               theta_ou, phi_right, r_right_outer,
-        #                               focalx, focaly, focalz,
-        #                               mx, my])
-        #
-        # system_bounds = np.array([(-np.inf, np.inf)] * 17)
-        #
-        # # system_bounds = np.vstack([(-np.inf, np.inf)] * 2,
-        # #                           [(-10, 10)])
-        #
-        # initial_target_parameters = np.array([tx, ty, tz, r1, r2, r3])
-        # df = pd.read_csv(Path("csvs/parameter_names.csv"), header=None)
-        # df.rename(columns={0: "Parameters"}, inplace=True)
-        # df["Initial guess"] = np.hstack((system_parameters, initial_target_parameters))
-        #
-        # # for num_imgs in range(len(imgcon.stereoimgs)):
-        # for num_imgs in range(1):
-        #     no_imgs_considered = num_imgs + 1
-        #     print(f"num imgs: {no_imgs_considered}")
-        #     # create target objects for each image
-        #     targetlist = []
-        #     for i in range(no_imgs_considered):
-        #         targetlist.append(TargetSystem(tx, ty, tz, r1, r2, r3))
-        #     targets = TargetContainer(targetlist)
-        #
-        #     target_parameters = np.array([tx, ty, tz, r1, r2, r3] * no_imgs_considered)
-        #
-        #     parameters = np.hstack((system_parameters, target_parameters))
-        #
-        #     projections_left = []
-        #     projections_right = []
-        #     for i in range(no_imgs_considered):
-        #         projection_left, projection_right = reconstruct_image(syst, targets.tlst[i], imgcon.objpoints)
-        #         projections_left.append(projection_left)
-        #         projections_right.append(projection_right)
-        #
-        #     # making sparse matrix for Jacobian
-        #     points_per_image = 2 * target_pattern.gridpoints.shape[0]
-        #     tot_points = no_imgs_considered * points_per_image
-        #     half_points = int(tot_points / 2)
-        #     no_parameters = len(parameters)
-        #
-        #     left_mirror_set = set(range(6))
-        #     right_mirror_set = set(range(6, 12))
-        #     shared_set = set(range(12, 17))
-        #     rt_set = set(range(17, no_parameters))
-        #
-        #     indices = np.empty(17 * tot_points, dtype=int)
-        #     data = np.ones(17 * tot_points, dtype=np.bool_)
-        #     indptrs = np.zeros(no_parameters + 1, dtype=int)
-        #
-        #     index_counter = 0
-        #     rt_counter = 0
-        #     img_counter = 0
-        #
-        #     for i in range(no_parameters):
-        #         if i in left_mirror_set:
-        #             indptrs[i + 1] = indptrs[i] + half_points
-        #             for j in range(half_points):
-        #                 indices[index_counter] = 2 * j + 1
-        #                 index_counter += 1
-        #         elif i in right_mirror_set:
-        #             indptrs[i + 1] = indptrs[i] + half_points
-        #             for j in range(half_points):
-        #                 indices[index_counter] = 2 * j
-        #                 index_counter += 1
-        #         elif i in shared_set:
-        #             indptrs[i + 1] = indptrs[i] + tot_points
-        #             for j in range(tot_points):
-        #                 indices[index_counter] = j
-        #                 index_counter += 1
-        #         elif i in rt_set:
-        #             indptrs[i + 1] = indptrs[i] + points_per_image
-        #             for j in range(points_per_image):
-        #                 indices[index_counter] = j + img_counter * points_per_image
-        #                 index_counter += 1
-        #             rt_counter += 1
-        #             if rt_counter % 6 == 0:
-        #                 img_counter += 1
-        #         else:
-        #             raise ValueError("Parameter range is incorrect.")
-        #     mtx = csc_matrix((data, indices, indptrs),
-        #                      shape=(tot_points, no_parameters))
-        #
-        #     target_bounds = [(-np.inf, np.inf)] * 6
-        #     target_bounds[2] = (tz - 100, tz + 100)
-        #     xbounds = np.vstack((system_bounds, target_bounds * no_imgs_considered))
-        #     xbounds = xbounds.T
-        #     xtuple = tuple(xbounds)
-        #     res_trf = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15,
-        #                             ftol=1e-8, x_scale='jac', bounds=xtuple, jac_sparsity=mtx,
-        #                             args=(syst, targets, imgcon))
-        #
-        #     TRF_projection_left, TRF_projection_right = reconstruct_image(syst, targets.tlst[0], imgcon.objpoints)
-        #
-        #     # # for the next iteration
-        #     # system_parameters = res_trf.x[:17]
-        #
-        #     sol = res_trf.x
-        #     costs.append(res_trf.cost)
-
-
-    imgcon = ImageContainer("testimgs3", "*.tif")
+    imgcon = ImageContainer("testimgs5/good", "*.tif")
     img_size = imgcon.imgsize
     imgcon.extract(target_pattern)
     no_imgs_considered = 1
@@ -403,11 +239,7 @@ if __name__ == "__main__":
     point_right_outer = right_outer_fixed.intersect(line_right_outer)
     r_right_outer = point_right_outer[0] / right_outer_fixed.orientation[0]
 
-    # define initial translations and rotations towards the target
-    # tx, ty, tz = 0.0, 0.0, 272.0
-    # rx, ry, rz = 0.0, 0.0, np.pi / 2
-
-    tx, ty, tz = 30.0, -40.0, 300.0
+    tx, ty, tz = 30.0, -40.0, 700.0
     rx, ry, rz = 0.0, 0.0, -np.pi / 2
     rot = R.from_euler('xyz', np.array([rx, ry, rz]))
     [r1, r2, r3] = rot.as_rotvec()
@@ -429,19 +261,16 @@ if __name__ == "__main__":
 
     system_bounds = np.array([(-np.inf, np.inf)] * 17)
 
-    # system_bounds = np.vstack([(-np.inf, np.inf)] * 2,
-    #                           [(-10, 10)])
-
     initial_target_parameters = np.array([tx, ty, tz, r1, r2, r3])
     df = pd.read_csv(Path("csvs/parameter_names.csv"), header=None)
     df.rename(columns={0: "Parameters"}, inplace=True)
     df["Initial guess"] = np.hstack((system_parameters, initial_target_parameters))
 
     costs = []
-    # for num_imgs in range(len(imgcon.stereoimgs)):
-    for num_imgs in range(1):
+    for num_imgs in range(4, 5):
         no_imgs_considered = num_imgs + 1
         print(f"num imgs: {no_imgs_considered}")
+
         # create target objects for each image
         targetlist = []
         for i in range(no_imgs_considered):
@@ -507,142 +336,11 @@ if __name__ == "__main__":
         mtx = csc_matrix((data, indices, indptrs),
                          shape=(tot_points, no_parameters))
 
-        target_bounds = [(-np.inf, np.inf)] * 6
-        target_bounds[2] = (tz - 100, tz + 100)
-        xbounds = np.vstack((system_bounds, target_bounds * no_imgs_considered))
-        xbounds = xbounds.T
+        RTbounds = np.vstack(([(-np.inf, np.inf)] * 2,
+                             (600, 800),  # Translations to target in z direction.
+                             [(-np.inf, np.inf)] * 3))  # Rotations to target.
+        RTbounds = np.vstack(([RTbounds] * no_imgs_considered))
+        xbounds = np.vstack(([(-np.inf, np.inf)]*17, RTbounds)).T
         xtuple = tuple(xbounds)
-        res_trf = least_squares(objfun, parameters, method='trf', verbose=2, max_nfev=no_fvals, xtol=1e-15,
-                                ftol=1e-8, x_scale='jac', bounds=xtuple, jac_sparsity=mtx, args=(syst, targets, imgcon))
-
-        TRF_projection_left, TRF_projection_right = reconstruct_image(syst, targets.tlst[0], imgcon.objpoints)
-
-        # # for the next iteration
-        # system_parameters = res_trf.x[:17]
-
-        sol = res_trf.x
-        costs.append(res_trf.cost)
-        if len(df.index) == len(sol):
-            df[f"no imgs: {no_imgs_considered}"] = sol
-        else:
-            additional_parameters = df.copy()[-6:]
-            additional_parameters["Parameters"] = additional_parameters["Parameters"].apply(split_fun, superscript=no_imgs_considered)
-            for col in additional_parameters.columns[1:]:
-                additional_parameters[col].values[:] = None
-            df = df.append(additional_parameters, ignore_index=True)
-            df[f"no imgs: {no_imgs_considered}"] = sol
-
-        costs.append(res_trf.cost/no_imgs_considered)
-        if no_imgs_considered == breaking_no - 1:
-            break
-
-    plotdict = {"Initial": (projections_left[0], projections_left[0]),
-                "TRF": (TRF_projection_left, TRF_projection_right)}
-    plotter.projections_on_img(imgcon.stereoimgs[0], plotdict)
-    costs = np.array(costs)
-    np.savetxt(f"csvs\\costs{no_imgs_considered}.csv", costs, delimiter=",")
-    df.to_csv(f"csvs\\num_imgs_{no_imgs_considered}_oneset.csv")
-    xbounds_z = np.vstack(([(-np.inf, np.inf)] * 19,
-                           (200, 300),  # Translations to target in z direction.
-                           [(-np.inf, np.inf)] * 3))  # Rotations to target.
-    xbounds_z = xbounds_z.T
-    xtuple_z = tuple(xbounds_z)
-    res_trf_bounded_z = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15,
-                                      ftol=1e-8, x_scale='jac', jac_sparsity=mtx, bounds=xtuple_z,
-                                      args=(syst, targets, imgcon))
-    print(f"bounded_z TRF exit flag: {exit_flags[res_trf_bounded_z.status]}")
-    TRF_bounded_projection_left, TRF_bounded_projection_right = reconstruct_image(syst, targets.tlst[0],
-                                                                                  imgcon.objpoints)
-    res_trf_bounded_exact_z = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15,
-                                      ftol=1e-8, x_scale='jac', bounds=xtuple_z,tr_solver='exact',
-                                      args=(syst, targets, imgcon))
-    print(f"bounded_exact_z TRF exit flag: {exit_flags[res_trf_bounded_exact_z.status]}")
-    TRF_bounded_exact_projection_left, TRF_bounded_exact_projection_right = reconstruct_image(syst, targets.tlst[0],
-                                                                                  imgcon.objpoints)
-    res_trf = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15,
-                            ftol=1e-8, x_scale='jac', jac_sparsity=mtx, args=(syst, targets, imgcon))
-    print(f"TRF exit flag: {exit_flags[res_trf.status]}")
-    TRF_projection_left, TRF_projection_right = reconstruct_image(syst, targets.tlst[0], imgcon.objpoints)
-    res_trf_exact = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15, tr_solver='exact',
-                            ftol=1e-8, x_scale='jac', args=(syst, targets, imgcon))
-    print(f"TRF exact exit flag: {exit_flags[res_trf_exact.status]}")
-    TRF_exact_projection_left, TRF_exact_projection_right = reconstruct_image(syst, targets.tlst[0], imgcon.objpoints)
-    res_lm = least_squares(objfun, parameters, method='lm', verbose=1, max_nfev=no_fvals, xtol=1e-15,
-                            ftol=1e-8, x_scale='jac', args=(syst, targets, imgcon))
-    print(f"lm exit flag: {exit_flags[res_lm.status]}")
-    lm_projection_left, lm_projection_right = reconstruct_image(syst, targets.tlst[0], imgcon.objpoints)
-
-    plotdict = {"Initial guess": (projections_left[0], projections_right[0]),
-                "TRF unbounded": (TRF_projection_left, TRF_projection_right),
-                "TRF bounded": (TRF_bounded_projection_left, TRF_bounded_projection_right),
-                "TRF exact": (TRF_exact_projection_left, TRF_exact_projection_right),
-                "TRF exact bounded": (TRF_bounded_exact_projection_left, TRF_bounded_exact_projection_right),
-                "LM scaled": (lm_projection_left, lm_projection_right)}
-    plotter.projections_on_img(imgcon.stereoimgs[0], plotdict)
-
-
-
-    # make bounds
-    xbounds = np.vstack(([(-np.inf, np.inf)] * 12,  # Mirrors.
-                        [(-1, 1)] * 2,  # Focal length in x and y directions.
-                        (2, 6),  # Focal length in z direction.
-                        [(2e-3, 4e-3)] * 2,  # Scaling of a pixel.
-                        [(-100, 100)] * 2,  # Translations to target in x and y directions.
-                        (550, 570),  # Translations to target in z direction.
-                        [(-np.inf, np.inf)] * 3))  # Rotations to target.
-
-    xbounds = xbounds.T
-    xtuple = tuple(xbounds)
-    res_trf_bounded = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15,
-                                    ftol=1e-8, x_scale='jac', jac_sparsity=mtx, bounds=xtuple,
-                                    args=(syst, targets, imgcon))
-    iter_info_bounded = trf.passlist
-    trf.passlist = []
-    print(f"Bounded TRF exit flag: {exit_flags[res_trf_bounded.status]} \n" +
-          f"Number of iterations: {len(iter_info_bounded)}")
-
-    xbounds_xyz = np.vstack(([(-np.inf, np.inf)] * 17,
-                         [(-100, 100)] * 2,  # Translations in x and y directions.
-                         (550, 570),  # Translations to target in z direction.
-                         [(-np.inf, np.inf)] * 3))  # Rotations to target.
-    xbounds_xyz = xbounds_xyz.T
-    xtuple_xyz = tuple(xbounds_xyz)
-    res_trf_bounded_xyz = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15,
-                                    ftol=1e-8, x_scale='jac', jac_sparsity=mtx, bounds=xtuple_xyz,
-                                    args=(syst, targets, imgcon))
-    iter_info_bounded_xyz = trf.passlist
-    trf.passlist = []
-    print(f"bounded_xyz TRF exit flag: {exit_flags[res_trf_bounded_xyz.status]} \n" +
-          f"Number of iterations: {len(iter_info_bounded_xyz)}")
-
-
-    df = pd.read_csv(Path("csvs/parameter_names.csv"), header=None)
-    df.rename(columns={0: "Parameters"}, inplace=True)
-    df["Initial guess"] = parameters
-
-    test_dict = {"Parameters": ["check"], "Initial guess": 5.0}
-    df.append(test_dict, ignore_index=True)
-
-    df["new res"] = np.random.rand(24)
-
-
-    df["Unbounded"] = res_trf.x
-    df["Bounded $T_z$"] = res_trf_bounded_z.x
-    df["Bounded $T_x, T_y, T_z$"] = res_trf_bounded_xyz.x
-    df["Bounded $T_i, focal_i, m_i$ "] = res_trf_bounded.x
-    angles = list(range(12))
-    del angles[2::3]
-    angles = set(angles)
-    scalings = {15, 16}
-    for index in df.index:
-        parameter_string = df.iloc[index, 0]
-        df.iloc[index, 0] = str('$' + parameter_string.strip() + '$')
-        if index in angles:
-            for col in range(len(df.columns)-1):
-                df.iloc[index, col+1] = df.iloc[index, col+1] * 180 / np.pi
-        elif index in scalings:
-            for col in range(len(df.columns)-1):
-                df.iloc[index, col+1] = df.iloc[index, col+1] * 1000
-
-    df.to_latex(buf=Path("C:/Personal/PPs/beamer ps/table.tex"), index=False, encoding="utf-8", escape=False,
-                float_format="%.2f")
+        res = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15, ftol=1e-8,
+                            x_scale='jac', jac_sparsity=mtx, bounds=xtuple, args=(syst, targets, imgcon))
