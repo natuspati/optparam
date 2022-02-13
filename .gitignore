@@ -1,14 +1,14 @@
-plots/*
+plots/
 
-csvs/*
+csvs/
 
-twod\ images\ sep\ 27/*
+twod\ images\ sep\ 27/
 
-twodimgs1/*
+twodimgs1/
 
-testimgs**
+testimgs**/
 
-__pychach__/
+__pychachd__/
 
 *.xlsx
 *.csv
