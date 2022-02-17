@@ -9,6 +9,7 @@ Created on Sun Oct 24 15:45:02 2021
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import scipy.io as sio
 from pathlib import Path
 from scipy.spatial.transform import Rotation as R
 from scipy.optimize import least_squares
@@ -192,155 +193,181 @@ if __name__ == "__main__":
     plotter = PlotContainer()
     plotted_img = 0
     breaking_no = 100
-    no_fvals = 5000
+    no_fvals = 200
     exit_flags = ["Iteration limit", "gtol", "ftol", "xtol"]
 
     # create target pattern and image container
-    target_pattern = Checkerboard(8, 11, 15)
+    # target_pattern = Checkerboard(8, 11, 15)
+    target_pattern = Circles(4, 7, 11)
 
-    imgcon = ImageContainer("testimgs5/good", "*.tif")
-    img_size = imgcon.imgsize
-    imgcon.extract(target_pattern)
-    no_imgs_considered = 1
-
-    # initialize objects from initial guesses (easily observed parameters)
-    theta_in = np.pi - np.pi / 4
-    theta_ou = np.pi - 52 * np.pi / 180
-    phi_left = np.pi
-    phi_right = 0
-    dist_bw_mirrors = 40
-    dist_to_lens = 15
-    mx, my = [3 / 1000] * 2
-    focalz = 2.2
-    focalx, focaly = 0, 0
-
-    # find r parameter of the mirrors
-    left_inner_fixed = Mirror(theta_in, phi_left, 0)
-    left_inner_fixed.origin = np.array([0, 0, dist_to_lens + focalz])
-    line_left_inner = Line(np.array([0, 0, 0]), left_inner_fixed.orientation)
-    point_left_inner = left_inner_fixed.intersect(line_left_inner)
-    r_left_inner = point_left_inner[0] / left_inner_fixed.orientation[0]
-
-    left_outer_fixed = Mirror(theta_ou, phi_left, 0)
-    left_outer_fixed.origin = np.array([-dist_bw_mirrors / 2, 0, dist_to_lens + focalz])
-    line_left_outer = Line(np.array([0, 0, 0]), left_outer_fixed.orientation)
-    point_left_outer = left_outer_fixed.intersect(line_left_outer)
-    r_left_outer = point_left_outer[0] / left_outer_fixed.orientation[0]
-
-    right_inner_fixed = Mirror(theta_in, phi_right, 0)
-    right_inner_fixed.origin = np.array([0, 0, dist_to_lens + focalz])
-    line_right_inner = Line(np.array([0, 0, 0]), right_inner_fixed.orientation)
-    point_right_inner = right_inner_fixed.intersect(line_right_inner)
-    r_right_inner = point_right_inner[0] / right_inner_fixed.orientation[0]
-
-    right_outer_fixed = Mirror(theta_ou, phi_right, 0)
-    right_outer_fixed.origin = np.array([dist_bw_mirrors / 2, 0, dist_to_lens + focalz])
-    line_right_outer = Line(np.array([0, 0, 0]), right_outer_fixed.orientation)
-    point_right_outer = right_outer_fixed.intersect(line_right_outer)
-    r_right_outer = point_right_outer[0] / right_outer_fixed.orientation[0]
-
-    tx, ty, tz = 30.0, -40.0, 700.0
-    rx, ry, rz = 0.0, 0.0, -np.pi / 2
-    rot = R.from_euler('xyz', np.array([rx, ry, rz]))
-    [r1, r2, r3] = rot.as_rotvec()
-
-    # create objects of the optical path
-    cam = Camera(img_size, mx, my, focalx, focaly, focalz)
-    left_inner = Mirror(theta_in, phi_left, r_left_inner)
-    left_outer = Mirror(theta_ou, phi_left, r_left_outer)
-    right_inner = Mirror(theta_in, phi_right, r_right_inner)
-    right_outer = Mirror(theta_ou, phi_right, r_right_outer)
-    syst = System(cam, left_inner, left_outer, right_inner, right_outer)
-
-    system_parameters = np.array([theta_in, phi_left, r_left_inner,
-                                  theta_ou, phi_left, r_left_outer,
-                                  theta_in, phi_right, r_right_inner,
-                                  theta_ou, phi_right, r_right_outer,
-                                  focalx, focaly, focalz,
-                                  mx, my])
-
-    system_bounds = np.array([(-np.inf, np.inf)] * 17)
-
-    initial_target_parameters = np.array([tx, ty, tz, r1, r2, r3])
-    df = pd.read_csv(Path("csvs/parameter_names.csv"), header=None)
-    df.rename(columns={0: "Parameters"}, inplace=True)
-    df["Initial guess"] = np.hstack((system_parameters, initial_target_parameters))
-
+    translations = np.empty((10, 3))
     costs = []
-    for num_imgs in range(4, 5):
-        no_imgs_considered = num_imgs + 1
-        print(f"num imgs: {no_imgs_considered}")
+    for img_index in range(1,11):
+        imgpath = "testimgs3/i" + str(img_index)
+        imgext = "*.TIF"
+        imgcon = ImageContainer(imgpath, imgext)
+        img_size = imgcon.imgsize
+        imgcon.extract(target_pattern)
+        no_imgs_considered = 1
 
-        # create target objects for each image
-        targetlist = []
-        for i in range(no_imgs_considered):
-            targetlist.append(TargetSystem(tx, ty, tz, r1, r2, r3))
-        targets = TargetContainer(targetlist)
+        # # load matlab undistorted points
+        # matfiles = list(map(str, list(Path("testimgs2").glob("*.MAT"))))
+        # left_contents = sio.loadmat(matfiles[0])
+        # right_contents = sio.loadmat(matfiles[1])
+        # object_contents = sio.loadmat(matfiles[2])
+        # undistleftpoints = left_contents["leftpoints"][0]
+        # undistrightpoints = right_contents["rightpoints"][0]
+        # for i in range(len(undistrightpoints)):
+        #     undistrightpoints[i][:, 0] += int(imgcon.imgsize[1]/2)
 
-        target_parameters = np.array([tx, ty, tz, r1, r2, r3] * no_imgs_considered)
+        # worldpoints2d = object_contents["worldPoints"].__array__()
+        # worldpoints = np.empty((28, 3))
+        # for i in range(worldpoints.shape[0]):
+        #     worldpoints[i] = np.hstack((worldpoints2d[i], 0))
+        # imgcon.imgpoints_left = undistleftpoints
+        # imgcon.imgpoints_right = undistrightpoints
+        # imgcon.objpoints = worldpoints
 
-        parameters = np.hstack((system_parameters, target_parameters))
+        # initialize objects from initial guesses (easily observed parameters)
+        theta_in = np.pi - np.pi / 4
+        theta_ou = np.pi - 52 * np.pi / 180
+        phi_left = np.pi
+        phi_right = 0
+        dist_bw_mirrors = 40
+        dist_to_lens = 15
+        mx, my = [3 / 1000] * 2
+        focalz = 2.2
+        focalx, focaly = 0, 0
 
-        projections_left = []
-        projections_right = []
-        for i in range(no_imgs_considered):
-            projection_left, projection_right = reconstruct_image(syst, targets.tlst[i], imgcon.objpoints)
-            projections_left.append(projection_left)
-            projections_right.append(projection_right)
+        # find r parameter of the mirrors
+        left_inner_fixed = Mirror(theta_in, phi_left, 0)
+        left_inner_fixed.origin = np.array([0, 0, dist_to_lens + focalz])
+        line_left_inner = Line(np.array([0, 0, 0]), left_inner_fixed.orientation)
+        point_left_inner = left_inner_fixed.intersect(line_left_inner)
+        r_left_inner = point_left_inner[0] / left_inner_fixed.orientation[0]
 
-        # making sparse matrix for Jacobian
-        points_per_image = 2 * target_pattern.gridpoints.shape[0]
-        tot_points = no_imgs_considered * points_per_image
-        half_points = int(tot_points / 2)
-        no_parameters = len(parameters)
+        left_outer_fixed = Mirror(theta_ou, phi_left, 0)
+        left_outer_fixed.origin = np.array([-dist_bw_mirrors / 2, 0, dist_to_lens + focalz])
+        line_left_outer = Line(np.array([0, 0, 0]), left_outer_fixed.orientation)
+        point_left_outer = left_outer_fixed.intersect(line_left_outer)
+        r_left_outer = point_left_outer[0] / left_outer_fixed.orientation[0]
 
-        left_mirror_set = set(range(6))
-        right_mirror_set = set(range(6, 12))
-        shared_set = set(range(12, 17))
-        rt_set = set(range(17, no_parameters))
+        right_inner_fixed = Mirror(theta_in, phi_right, 0)
+        right_inner_fixed.origin = np.array([0, 0, dist_to_lens + focalz])
+        line_right_inner = Line(np.array([0, 0, 0]), right_inner_fixed.orientation)
+        point_right_inner = right_inner_fixed.intersect(line_right_inner)
+        r_right_inner = point_right_inner[0] / right_inner_fixed.orientation[0]
 
-        indices = np.empty(17 * tot_points, dtype=int)
-        data = np.ones(17 * tot_points, dtype=np.bool_)
-        indptrs = np.zeros(no_parameters + 1, dtype=int)
+        right_outer_fixed = Mirror(theta_ou, phi_right, 0)
+        right_outer_fixed.origin = np.array([dist_bw_mirrors / 2, 0, dist_to_lens + focalz])
+        line_right_outer = Line(np.array([0, 0, 0]), right_outer_fixed.orientation)
+        point_right_outer = right_outer_fixed.intersect(line_right_outer)
+        r_right_outer = point_right_outer[0] / right_outer_fixed.orientation[0]
 
-        index_counter = 0
-        rt_counter = 0
-        img_counter = 0
+        tx, ty, tz = 0.0, 0.0, 300.0
+        rx, ry, rz = 0.0, 0.0, -np.pi / 2
+        rot = R.from_euler('xyz', np.array([rx, ry, rz]))
+        [r1, r2, r3] = rot.as_rotvec()
 
-        for i in range(no_parameters):
-            if i in left_mirror_set:
-                indptrs[i + 1] = indptrs[i] + half_points
-                for j in range(half_points):
-                    indices[index_counter] = 2 * j + 1
-                    index_counter += 1
-            elif i in right_mirror_set:
-                indptrs[i + 1] = indptrs[i] + half_points
-                for j in range(half_points):
-                    indices[index_counter] = 2 * j
-                    index_counter += 1
-            elif i in shared_set:
-                indptrs[i + 1] = indptrs[i] + tot_points
-                for j in range(tot_points):
-                    indices[index_counter] = j
-                    index_counter += 1
-            elif i in rt_set:
-                indptrs[i + 1] = indptrs[i] + points_per_image
-                for j in range(points_per_image):
-                    indices[index_counter] = j + img_counter * points_per_image
-                    index_counter += 1
-                rt_counter += 1
-                if rt_counter % 6 == 0:
-                    img_counter += 1
-            else:
-                raise ValueError("Parameter range is incorrect.")
-        mtx = csc_matrix((data, indices, indptrs),
-                         shape=(tot_points, no_parameters))
+        # create objects of the optical path
+        cam = Camera(img_size, mx, my, focalx, focaly, focalz)
+        left_inner = Mirror(theta_in, phi_left, r_left_inner)
+        left_outer = Mirror(theta_ou, phi_left, r_left_outer)
+        right_inner = Mirror(theta_in, phi_right, r_right_inner)
+        right_outer = Mirror(theta_ou, phi_right, r_right_outer)
+        syst = System(cam, left_inner, left_outer, right_inner, right_outer)
 
-        RTbounds = np.vstack(([(-np.inf, np.inf)] * 2,
-                             (600, 800),  # Translations to target in z direction.
-                             [(-np.inf, np.inf)] * 3))  # Rotations to target.
-        RTbounds = np.vstack(([RTbounds] * no_imgs_considered))
-        xbounds = np.vstack(([(-np.inf, np.inf)]*17, RTbounds)).T
-        xtuple = tuple(xbounds)
-        res = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15, ftol=1e-8,
-                            x_scale='jac', jac_sparsity=mtx, bounds=xtuple, args=(syst, targets, imgcon))
+        system_parameters = np.array([theta_in, phi_left, r_left_inner,
+                                      theta_ou, phi_left, r_left_outer,
+                                      theta_in, phi_right, r_right_inner,
+                                      theta_ou, phi_right, r_right_outer,
+                                      focalx, focaly, focalz,
+                                      mx, my])
+
+        system_bounds = np.array([(-np.inf, np.inf)] * 17)
+
+        initial_target_parameters = np.array([tx, ty, tz, r1, r2, r3])
+        df = pd.read_csv(Path("csvs/parameter_names.csv"), header=None)
+        df.rename(columns={0: "Parameters"}, inplace=True)
+        df["Initial guess"] = np.hstack((system_parameters, initial_target_parameters))
+
+        for num_imgs in range(1):
+            no_imgs_considered = num_imgs + 1
+            print(f"num imgs: {no_imgs_considered}")
+
+            # create target objects for each image
+            targetlist = []
+            for i in range(no_imgs_considered):
+                targetlist.append(TargetSystem(tx, ty, tz, r1, r2, r3))
+            targets = TargetContainer(targetlist)
+
+            target_parameters = np.array([tx, ty, tz, r1, r2, r3] * no_imgs_considered)
+
+            parameters = np.hstack((system_parameters, target_parameters))
+
+            projections_left = []
+            projections_right = []
+            for i in range(no_imgs_considered):
+                projection_left, projection_right = reconstruct_image(syst, targets.tlst[i], imgcon.objpoints)
+                projections_left.append(projection_left)
+                projections_right.append(projection_right)
+
+            # making sparse matrix for Jacobian
+            points_per_image = 2 * target_pattern.gridpoints.shape[0]
+            tot_points = no_imgs_considered * points_per_image
+            half_points = int(tot_points / 2)
+            no_parameters = len(parameters)
+
+            left_mirror_set = set(range(6))
+            right_mirror_set = set(range(6, 12))
+            shared_set = set(range(12, 17))
+            rt_set = set(range(17, no_parameters))
+
+            indices = np.empty(17 * tot_points, dtype=int)
+            data = np.ones(17 * tot_points, dtype=np.bool_)
+            indptrs = np.zeros(no_parameters + 1, dtype=int)
+
+            index_counter = 0
+            rt_counter = 0
+            img_counter = 0
+
+            for i in range(no_parameters):
+                if i in left_mirror_set:
+                    indptrs[i + 1] = indptrs[i] + half_points
+                    for j in range(half_points):
+                        indices[index_counter] = 2 * j + 1
+                        index_counter += 1
+                elif i in right_mirror_set:
+                    indptrs[i + 1] = indptrs[i] + half_points
+                    for j in range(half_points):
+                        indices[index_counter] = 2 * j
+                        index_counter += 1
+                elif i in shared_set:
+                    indptrs[i + 1] = indptrs[i] + tot_points
+                    for j in range(tot_points):
+                        indices[index_counter] = j
+                        index_counter += 1
+                elif i in rt_set:
+                    indptrs[i + 1] = indptrs[i] + points_per_image
+                    for j in range(points_per_image):
+                        indices[index_counter] = j + img_counter * points_per_image
+                        index_counter += 1
+                    rt_counter += 1
+                    if rt_counter % 6 == 0:
+                        img_counter += 1
+                else:
+                    raise ValueError("Parameter range is incorrect.")
+            mtx = csc_matrix((data, indices, indptrs),
+                             shape=(tot_points, no_parameters))
+
+            RTbounds = np.vstack(([(-np.inf, np.inf)] * 2,
+                                 (200, 400),  # Translations to target in z direction.
+                                 [(-np.inf, np.inf)] * 3))  # Rotations to target.
+            RTbounds = np.vstack(([RTbounds] * no_imgs_considered))
+            xbounds = np.vstack(([(-np.inf, np.inf)]*17, RTbounds)).T
+            xtuple = tuple(xbounds)
+            res = least_squares(objfun, parameters, method='trf', verbose=1, max_nfev=no_fvals, xtol=1e-15, ftol=1e-8,
+                                x_scale='jac', jac_sparsity=mtx, bounds=xtuple, args=(syst, targets, imgcon))
+
+            translations[img_index - 1] = res.x[17:20]
+            costs.append(res.cost)

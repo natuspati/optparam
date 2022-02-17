@@ -18,10 +18,8 @@ def split_fun(original_str, index):
 
 
 if __name__ == '__main__':
-    eng = matlab.engine.start_matlab()
-    eng.quit()
 
-    # plt.close("all")
+    plt.close("all")
     # plt.rcParams['font.size'] = '16'
     #
     # # cs = np.loadtxt("csvs\\costs10.csv", delimiter=",")
@@ -135,39 +133,44 @@ if __name__ == '__main__':
 
 
 
-    # res = np.loadtxt("csvs\\10imgsol.csv", delimiter=',')
-    # fig, ax = plt.subplots(figsize=(12, 8))
-    # fig.patch.set_facecolor('None')
-    # targetinfo = res[17:]
-    # Txs = targetinfo[0::6]
-    # Tys = targetinfo[1::6]
-    # Tzs = targetinfo[2::6]
-    # dists = np.zeros_like(Txs)
-    # for i, (Tx, Ty, Tz) in enumerate(zip(Txs, Tys, Tzs)):
-    #     dists[i] = np.linalg.norm([Tx, Ty, Tz])
-    #
-    # iTys = np.array([-40, 20, -40, 20, -40, 20, -40, 20, -40, 20])
-    # iTxs = np.ones_like(Txs)
-    # iTxs = 100 * iTxs
-    # iTzs = np.array([270, 270, 290, 290, 310, 310, 330, 330, 350, 350])
-    # idists = np.zeros_like(Txs)
-    # for i, (Tx, Ty, Tz) in enumerate(zip(iTxs, iTys, iTzs)):
-    #     idists[i] = np.linalg.norm([Tx, Ty, Tz])
-    #
-    # xs = list(range(1, 11))
-    # ax.scatter(xs, iTxs, label="$T_x^{meas}$", marker='P', s=100, c='C0')
-    # ax.scatter(xs, iTys, label="$T_y^{meas}$", marker='P', s=100, c='C1')
-    # ax.scatter(xs, iTzs, label="$T_z^{meas}$", marker='P', s=100, c='C2')
-    #
-    # # ax.scatter(xs, Txs, label="$T_x^{opt}$", marker='v', s=120, c='b')
-    # # ax.scatter(xs, Tys, label="$T_y^{opt}$", marker='v', s=120, c='orange')
-    # # ax.scatter(xs, Tzs, label="$T_z^{opt}$", marker='v', s=120, c='g')
-    #
-    # ax.set_ylabel("Optimized value, mm")
-    # ax.set_xlabel("Image index, $I$")
-    # ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=3, fancybox=True, shadow=True)
-    # ax.grid(visible=True, which='both', axis='both')
-    # ax.set_xticks(xs)
-    # ytics = list(range(-50, 450, 50))
-    # ax.set_yticks(ytics)
-    # fig.savefig("plots\\10imgfull.png", dpi='figure', format='png', pad_inches=0.0)
+    res = np.loadtxt("csvs\\10imgsol.csv", delimiter=',')
+    res1 = pd.read_excel("csvs\\trans11mm.xlsx", header=None)
+    res1 = np.array(res1)
+    fig, ax = plt.subplots(figsize=(12, 8))
+    fig.patch.set_facecolor('None')
+    targetinfo = res[17:]
+    Txs = targetinfo[0::6]
+    Tys = targetinfo[1::6]
+    Tzs = targetinfo[2::6]
+    mTzs = res1[:, 2]
+    dists = np.zeros_like(Txs)
+    for i, (Tx, Ty, Tz) in enumerate(zip(Txs, Tys, Tzs)):
+        dists[i] = np.linalg.norm([Tx, Ty, Tz])
+
+    iTys = np.array([-40, 20, -40, 20, -40, 20, -40, 20, -40, 20])
+    iTxs = np.ones_like(Txs)
+    iTxs = 100 * iTxs
+    iTzs = np.array([270, 270, 290, 290, 310, 310, 330, 330, 350, 350])
+    idists = np.zeros_like(Txs)
+    for i, (Tx, Ty, Tz) in enumerate(zip(iTxs, iTys, iTzs)):
+        idists[i] = np.linalg.norm([Tx, Ty, Tz])
+
+    xs = list(range(1, 11))
+    ax.scatter(xs, iTxs, label="$T_x^{meas}$", marker='P', s=100, c='C0')
+    ax.scatter(xs, iTys, label="$T_y^{meas}$", marker='P', s=100, c='C1')
+    ax.scatter(xs, iTzs, label="$T_z^{meas}$", marker='P', s=100, c='C2')
+
+    ax.scatter(xs, Txs, label="$T_x^{opt, old}$", marker='v', s=120, c='b')
+    ax.scatter(xs, Tys, label="$T_y^{opt, old}$", marker='v', s=120, c='orange')
+    ax.scatter(xs, Tzs, label="$T_z^{opt, old}$", marker='v', s=120, c='g')
+
+    ax.scatter(xs, mTzs, label="$T_z^{opt, new}$", marker='v', s=120, c='r')
+
+    ax.set_ylabel("Optimized value, mm")
+    ax.set_xlabel("Image index, $I$")
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.05), ncol=3, fancybox=True, shadow=True)
+    ax.grid(visible=True, which='both', axis='both')
+    ax.set_xticks(xs)
+    ytics = list(range(-50, 450, 50))
+    ax.set_yticks(ytics)
+    fig.savefig("plots\\10imgfullnew.png", dpi='figure', format='png', pad_inches=0.0)
