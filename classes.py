@@ -8,7 +8,9 @@ Created on Wed Oct 20 16:31:52 2021
 import numpy as np
 import cv2 as cv
 from pathlib import Path
-
+import transforms3d.reflections as tr
+import transforms3d.affines as ta
+from scipy.spatial.transform import Rotation as R
 from targets import Checkerboard, Circles
 
 
@@ -226,13 +228,23 @@ class ImageContainer(object):
                                    f"\n img path = {img_path}")
 
 
-# class SingleCameraCalibration(object):
-#     def __init__(self, objpoints, imgpoints):
-#         ret, mtx, dist, rvecs, tves = cv.calibrateCamera()
-#         self.matrix = 
-#         self.distortion = 
-#         self.recs = 
-#         self.tvecs = 
+class Homography(object):
+    def __init__(self, rot_matrix, tran_vector, angles, mirror_points, intrinsic_matrix):
+        self.rt_matrix = ta.compose(tran_vector, rot_matrix, [1, 1, 1])
+        mirror_normals = np.empty((4, 3))
+        reflection_matrices = np.empty((4, 4, 4))
+        for index, angle in enumerate(angles):
+            mirror_normals[index] = np.array([np.cos(angle[1]) * np.sin(angle[0]),
+                                              np.sin(angle[1]) * np.sin(angle[0]),
+                                              np.cos(angle[0])])
+            reflection_matrices[index, :, :] = tr.rfnorm2aff(mirror_normals[index], mirror_points[index])
+
+        self.left_refl_matrix = reflection_matrices[0, :, :].dot(reflection_matrices[1, :, :])
+        self.right_refl_matrix = reflection_matrices[2, :, :].dot(reflection_matrices[3, :, :])
+        self.intrinsic_matrix = intrinsic_matrix
+
+        self.left_projection_matrix = self.intrinsic_matrix.dot(self.left_refl_matrix.dot(self.rt_matrix))
+        self.right_projection_matrix = self.intrinsic_matrix.dot(self.right_refl_matrix.dot(self.rt_matrix))
 
 
 if __name__ == "__main__":
@@ -240,3 +252,32 @@ if __name__ == "__main__":
     imgcon = ImageContainer("testimgs")
     img_size = imgcon.imgsize
     imgcon.extract(cb)
+
+    r = R.from_euler('zyx', [90, 0, 0], degrees=True)
+    rot_mtx = r.as_matrix()
+    tran_vec = np.array([0, 0, 10])
+
+    inner_angle = 45 * np.pi / 180
+    outer_angle = 52 * np.pi / 180
+    theta_inner = np.pi / 2 + inner_angle
+    theta_outer = np.pi / 2 + outer_angle
+    phi = np.pi
+    ang = np.array([[theta_inner, phi],
+                    [theta_outer, phi],
+                    [theta_inner, 0],
+                    [theta_outer, 0]])
+
+    dist_bw_mirrors = 2
+    dist_to_mirrors = 3
+    pts = np.array([[0, 0, dist_to_mirrors],
+                    [-dist_bw_mirrors, 0, dist_to_mirrors],
+                    [0, 0, dist_to_mirrors],
+                    [dist_bw_mirrors, 0, dist_to_mirrors]])
+
+    fx, fy = 100.0, 100.0
+    cx, cy = 100.0, 100.0
+    K = np.array([[fx, 0, cx, 0],
+                  [0, fy, cy, 0],
+                  [0, 0, 1, 0]])
+
+    P = Homography(rot_mtx, tran_vec, ang, pts, K)
