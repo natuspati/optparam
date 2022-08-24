@@ -4,8 +4,18 @@
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/csvs" />
       <excludeFolder url="file://$MODULE_DIR$/twod images sep 27" />
+      <excludeFolder url="file://$MODULE_DIR$/venv" />
+      <excludeFolder url="file://$MODULE_DIR$/testimgs9/raws" />
+      <excludeFolder url="file://$MODULE_DIR$/plots" />
+      <excludeFolder url="file://$MODULE_DIR$/testimgs" />
+      <excludeFolder url="file://$MODULE_DIR$/testimgs1" />
+      <excludeFolder url="file://$MODULE_DIR$/testimgs2" />
+      <excludeFolder url="file://$MODULE_DIR$/testimgs5" />
+      <excludeFolder url="file://$MODULE_DIR$/testimgs7" />
+      <excludeFolder url="file://$MODULE_DIR$/testimgs8" />
+      <excludeFolder url="file://$MODULE_DIR$/twodimgs1" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.9 (py39)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.10 (optparam)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PackageRequirementsSettings">

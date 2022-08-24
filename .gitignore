@@ -6,17 +6,10 @@ twod\ images\ sep\ 27/
 
 twodimgs1/
 
-testimgs/
-testimgs1/
-testimgs2/
-testimgs3/
-testimgs4/
-testimgs5/
-testimgs7/
-testimgs8/
-testimgs9/raws
+testimg*/
 
 __pycache__/
+.idea
 
 *.xlsx
 *.csv

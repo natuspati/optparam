@@ -230,14 +230,20 @@ class ImageContainer(object):
 
 class Homography(object):
     def __init__(self, rot_matrix, tran_vector, angles, mirror_points, intrinsic_matrix):
+        self.rot_matrix = rot_matrix
+        self.tran_vector = tran_vector
         self.rt_matrix = ta.compose(tran_vector, rot_matrix, [1, 1, 1])
-        mirror_normals = np.empty((4, 3))
+        self.angles = angles
+        self.dists = np.empty(4)
+        self.mirror_normals = np.empty((4, 3))
         reflection_matrices = np.empty((4, 4, 4))
-        for index, angle in enumerate(angles):
-            mirror_normals[index] = np.array([np.cos(angle[1]) * np.sin(angle[0]),
-                                              np.sin(angle[1]) * np.sin(angle[0]),
-                                              np.cos(angle[0])])
-            reflection_matrices[index, :, :] = tr.rfnorm2aff(mirror_normals[index], mirror_points[index])
+
+        for index, (angle, mirror_point) in enumerate(zip(angles, mirror_points)):
+            self.mirror_normals[index] = np.array([np.cos(angle[1]) * np.sin(angle[0]),
+                                                   np.sin(angle[1]) * np.sin(angle[0]),
+                                                   np.cos(angle[0])])
+            self.dists[index] = self._find_r(self.mirror_normals[index], mirror_point)
+            reflection_matrices[index, :, :] = tr.rfnorm2aff(self.mirror_normals[index], mirror_point)
 
         self.left_refl_matrix = reflection_matrices[0, :, :].dot(reflection_matrices[1, :, :])
         self.right_refl_matrix = reflection_matrices[2, :, :].dot(reflection_matrices[3, :, :])
@@ -246,38 +252,219 @@ class Homography(object):
         self.left_projection_matrix = self.intrinsic_matrix.dot(self.left_refl_matrix.dot(self.rt_matrix))
         self.right_projection_matrix = self.intrinsic_matrix.dot(self.right_refl_matrix.dot(self.rt_matrix))
 
+    def project_to_image(self, world_points, rot_vecs, tran_vecs):
+        left_points_list = []
+        right_points_list = []
+        for (rot_vec, tran_vec) in zip(rot_vecs, tran_vecs):
+            r = R.from_rotvec(rot_vec)
+            rt_matrix = ta.compose(np.array(tran_vec), r.as_matrix(), [1, 1, 1])
+            left_projection_matrix, right_projection_matrix = self.construct_projection_matrix(rt_matrix)
+            left_projected_points = np.empty((len(world_points), 2))
+            right_projected_points = left_projected_points.copy()
+            for i, point in enumerate(world_points):
+                point = np.append(point, 1)
+                left_projected_points[i] = self.non_homogeneous(left_projection_matrix.dot(point))
+                right_projected_points[i] = self.non_homogeneous(right_projection_matrix.dot(point))
+            left_points_list.append(left_projected_points)
+            right_points_list.append(right_projected_points)
+        return left_points_list, right_points_list
+
+    def construct_projection_matrix(self, rt_matrix):
+        left_projection_matrix = self.intrinsic_matrix.dot(self.left_refl_matrix.dot(rt_matrix))
+        right_projection_matrix = self.intrinsic_matrix.dot(self.right_refl_matrix.dot(rt_matrix))
+        return left_projection_matrix, right_projection_matrix
+
+    # EXPERIMENTAL
+    # def update(self, parameters):
+    #     # SCALING
+    #     tempvars = parameters[:8] * 1E4
+    #
+    #     angles = tempvars.reshape((4, 2))
+    #     dists = parameters[8:12]
+    #     [fx, fy, cx, cy,
+    #      r1, r2, r3,
+    #      tx, ty, tz] = parameters[12:]
+    #
+    #     r = R.from_rotvec([r1, r2, r3])
+    #     self.rt_matrix = ta.compose(np.array([tx, ty, tz]), r.as_matrix(), [1, 1, 1])
+    #
+    #     mirror_normals = np.empty((4, 3))
+    #     reflection_matrices = np.empty((4, 4, 4))
+    #     for index, angle in enumerate(angles):
+    #         mirror_normals[index] = np.array([np.cos(angle[1]) * np.sin(angle[0]),
+    #                                           np.sin(angle[1]) * np.sin(angle[0]),
+    #                                           np.cos(angle[0])])
+    #         mirror_point = mirror_normals[index] * dists[index]
+    #         reflection_matrices[index, :, :] = tr.rfnorm2aff(mirror_normals[index], mirror_point)
+    #
+    #     self.left_refl_matrix = reflection_matrices[0, :, :].dot(reflection_matrices[1, :, :])
+    #     self.right_refl_matrix = reflection_matrices[2, :, :].dot(reflection_matrices[3, :, :])
+    #
+    #     self.intrinsic_matrix = np.array([[fx, 0, cx, 0],
+    #                                       [0, fy, cy, 0],
+    #                                       [0, 0, 1, 0]])
+    #
+    #     self.left_projection_matrix = self.intrinsic_matrix.dot(self.left_refl_matrix.dot(self.rt_matrix))
+    #     self.right_projection_matrix = self.intrinsic_matrix.dot(self.right_refl_matrix.dot(self.rt_matrix))
+    #
+    # def get_parameters(self):
+    #     r = R.from_matrix(self.rot_matrix)
+    #     rot_vector = r.as_rotvec()
+    #     return np.hstack([self.angles.flatten() / 1E4,
+    #                       self.dists,
+    #                       self.intrinsic_matrix[0, 0],
+    #                       self.intrinsic_matrix[1, 1],
+    #                       self.intrinsic_matrix[0, 2],
+    #                       self.intrinsic_matrix[1, 2],
+    #                       rot_vector,
+    #                       self.tran_vector])
+
+    # def update(self, parameters, scaling):
+    #     # SCALING
+    #     tempvars = parameters.copy() * scaling
+    #
+    #     angles = tempvars[:8].reshape((4, 2))
+    #     dists = parameters[8:12]
+    #     [fx, fy, cx, cy,
+    #      r1, r2, r3,
+    #      tx, ty, tz] = parameters[12:]
+    #
+    #     r = R.from_rotvec([r1, r2, r3])
+    #     self.rt_matrix = ta.compose(np.array([tx, ty, tz]), r.as_matrix(), [1, 1, 1])
+    #
+    #     mirror_normals = np.empty((4, 3))
+    #     reflection_matrices = np.empty((4, 4, 4))
+    #     for index, angle in enumerate(angles):
+    #         mirror_normals[index] = np.array([np.cos(angle[1]) * np.sin(angle[0]),
+    #                                           np.sin(angle[1]) * np.sin(angle[0]),
+    #                                           np.cos(angle[0])])
+    #         mirror_point = mirror_normals[index] * dists[index]
+    #         reflection_matrices[index, :, :] = tr.rfnorm2aff(mirror_normals[index], mirror_point)
+    #
+    #     self.left_refl_matrix = reflection_matrices[0, :, :].dot(reflection_matrices[1, :, :])
+    #     self.right_refl_matrix = reflection_matrices[2, :, :].dot(reflection_matrices[3, :, :])
+    #
+    #     self.intrinsic_matrix = np.array([[fx, 0, cx, 0],
+    #                                       [0, fy, cy, 0],
+    #                                       [0, 0, 1, 0]])
+    #
+    #     self.left_projection_matrix = self.intrinsic_matrix.dot(self.left_refl_matrix.dot(self.rt_matrix))
+    #     self.right_projection_matrix = self.intrinsic_matrix.dot(self.right_refl_matrix.dot(self.rt_matrix))
+
+    # def get_parameters(self, scaling):
+    #     r = R.from_matrix(self.rot_matrix)
+    #     rot_vector = r.as_rotvec()
+    #     return np.hstack([self.angles.flatten(),
+    #                       self.dists,
+    #                       self.intrinsic_matrix[0, 0],
+    #                       self.intrinsic_matrix[1, 1],
+    #                       self.intrinsic_matrix[0, 2],
+    #                       self.intrinsic_matrix[1, 2],
+    #                       rot_vector,
+    #                       self.tran_vector]) / scaling
+
+    def update(self, parameters):
+        # theta_left_in, phi_left_in, r_left_in,
+        #          theta_left_ou, phi_left_ou, r_left_ou,
+        #          theta_right_in, phi_right_in, r_right_in,
+        #          theta_right_ou, phi_right_ou, r_right_ou,
+        # [theta_left_in, phi_left_in, theta_left_ou, phi_left_ou,
+        #  theta_right_in, phi_right_in, theta_right_ou, phi_right_ou] =
+        angles = parameters[:8].reshape((4, 2))
+        dists = parameters[8:12]
+        [fx, fy, cx, cy,
+         r1, r2, r3,
+         tx, ty, tz] = parameters[12:22]
+
+        r = R.from_rotvec([r1, r2, r3])
+        self.rt_matrix = ta.compose(np.array([tx, ty, tz]), r.as_matrix(), [1, 1, 1])
+
+        mirror_normals = np.empty((4, 3))
+        reflection_matrices = np.empty((4, 4, 4))
+        for index, angle in enumerate(angles):
+            mirror_normals[index] = np.array([np.cos(angle[1]) * np.sin(angle[0]),
+                                              np.sin(angle[1]) * np.sin(angle[0]),
+                                              np.cos(angle[0])])
+            mirror_point = mirror_normals[index] * dists[index]
+            reflection_matrices[index, :, :] = tr.rfnorm2aff(mirror_normals[index], mirror_point)
+
+        self.left_refl_matrix = reflection_matrices[0, :, :].dot(reflection_matrices[1, :, :])
+        self.right_refl_matrix = reflection_matrices[2, :, :].dot(reflection_matrices[3, :, :])
+
+        self.intrinsic_matrix = np.array([[fx, 0, cx, 0],
+                                          [0, fy, cy, 0],
+                                          [0, 0, 1, 0]])
+
+        self.left_projection_matrix = self.intrinsic_matrix.dot(self.left_refl_matrix.dot(self.rt_matrix))
+        self.right_projection_matrix = self.intrinsic_matrix.dot(self.right_refl_matrix.dot(self.rt_matrix))
+
+    def get_parameters(self):
+        r = R.from_matrix(self.rot_matrix)
+        rot_vector = r.as_rotvec()
+        return np.hstack([self.angles.flatten(),
+                          self.dists,
+                          self.intrinsic_matrix[0, 0],
+                          self.intrinsic_matrix[1, 1],
+                          self.intrinsic_matrix[0, 2],
+                          self.intrinsic_matrix[1, 2],
+                          rot_vector,
+                          self.tran_vector])
+
+    @staticmethod
+    def _find_r(normal, point):
+        return np.array(normal).dot(point)
+    
+    @staticmethod
+    def non_homogeneous(point):
+        return np.array([point[0] / point[2], point[1] / point[2]])
+
+
+class SingleCameraCalibrator(object):
+    def __init__(self, path, ext, target):
+        self.img_locations = list(map(str, list(Path(path).glob(ext))))
+        img = cv.imread(self.img_locations[0])
+        self.img_size = (img.shape[0], img.shape[1])
+        self.criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+        self.img_points = []
+        self.obj_points = []
+
+        for img_location in self.img_locations:
+            img = cv.imread(img_location)
+            img_gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+            if isinstance(target, Checkerboard):
+                ret, corners = cv.findChessboardCorners(img_gray,
+                                                        (target.verticals, target.horizontals),
+                                                        None)
+            elif isinstance(target, Circles):
+                ret, corners = cv.findCirclesGrid(img_gray,
+                                                  target.pattern_size,
+                                                  flags=cv.CALIB_CB_ASYMMETRIC_GRID)
+            else:
+                raise NotImplementedError("Target type is not implemented.")
+
+            if ret is True:
+                self.img_points.append(corners)
+                self.obj_points.append(target.gridpoints)
+            else:
+                raise RuntimeError("Target could not be detected properly." + f"\n img path = {img_location}")
+
+        rms_error, mtx, dist, rvecs, tvecs = cv.calibrateCamera(self.obj_points,
+                                                                self.img_points,
+                                                                img.shape[:-1],
+                                                                None, None)
+        self.rvecs = rvecs
+        self.tvecs = tvecs
+        h, w = self.img_size
+        new_camera_mtx, roi = cv.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
+        self.instrinsics = new_camera_mtx
+        self.rms_error = rms_error
+
+    def homogeneous_intrinsics(self):
+        return np.hstack((self.instrinsics, np.zeros((3, 1))))
+
 
 if __name__ == "__main__":
     cb = Checkerboard(8, 11, 15)
     imgcon = ImageContainer("testimgs")
     img_size = imgcon.imgsize
     imgcon.extract(cb)
-
-    r = R.from_euler('zyx', [90, 0, 0], degrees=True)
-    rot_mtx = r.as_matrix()
-    tran_vec = np.array([0, 0, 10])
-
-    inner_angle = 45 * np.pi / 180
-    outer_angle = 52 * np.pi / 180
-    theta_inner = np.pi / 2 + inner_angle
-    theta_outer = np.pi / 2 + outer_angle
-    phi = np.pi
-    ang = np.array([[theta_inner, phi],
-                    [theta_outer, phi],
-                    [theta_inner, 0],
-                    [theta_outer, 0]])
-
-    dist_bw_mirrors = 2
-    dist_to_mirrors = 3
-    pts = np.array([[0, 0, dist_to_mirrors],
-                    [-dist_bw_mirrors, 0, dist_to_mirrors],
-                    [0, 0, dist_to_mirrors],
-                    [dist_bw_mirrors, 0, dist_to_mirrors]])
-
-    fx, fy = 100.0, 100.0
-    cx, cy = 100.0, 100.0
-    K = np.array([[fx, 0, cx, 0],
-                  [0, fy, cy, 0],
-                  [0, 0, 1, 0]])
-
-    P = Homography(rot_mtx, tran_vec, ang, pts, K)
