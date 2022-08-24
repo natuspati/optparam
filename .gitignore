@@ -1,21 +1,2 @@
-plots/
-
-csvs/
-
-twod\ images\ sep\ 27/
-
-twodimgs1/
-
-testimg*/
-
 __pycache__/
 .idea
-
-*.xlsx
-*.csv
-*.jpg
-*.jpeg
-*.tif
-*.tiff
-*.png
-*.dng
