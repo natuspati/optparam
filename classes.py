@@ -11,7 +11,7 @@ from pathlib import Path
 import transforms3d.reflections as tr
 import transforms3d.affines as ta
 from scipy.spatial.transform import Rotation as R
-from targets import Checkerboard, Circles
+from src.target_types import Checkerboard, Circles
 
 
 class Line(object):
@@ -187,7 +187,7 @@ class ImageContainer(object):
         None.
 
         """
-        self.objpoints = target.gridpoints
+        self.objpoints = target.points
         for img_path in self.stereoimgs:
             img = cv.imread(img_path)
             [img_left, img_right] = self._img_split(img)

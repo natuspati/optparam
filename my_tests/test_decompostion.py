@@ -3,4 +3,8 @@ import unittest
 
 class TestRQDecomposition(unittest.TestCase):
     def test_rq(self):
-        self.assertEqual()
+        pass
+
+
+if __name__ == '__main__':
+    unittest.main()

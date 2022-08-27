@@ -1,12 +1,9 @@
 # Imports
 import numpy as np
-import matplotlib.pyplot as plt
-import cv2 as cv
 from copy import copy
 from classes import Homography, SingleCameraCalibrator
 from scipy.spatial.transform import Rotation as R
-from scipy.optimize import least_squares, basinhopping, minimize
-from targets import Checkerboard, Circles
+from src.target_types import Checkerboard
 from classes import ImageContainer
 
 

@@ -2,10 +2,9 @@
 import numpy as np
 import random
 from copy import copy
-import matplotlib.pyplot as plt
-from targets import Checkerboard
+from src.target_types import Checkerboard
 from scipy.spatial.transform import Rotation
-from scipy.optimize import basinhopping, least_squares
+from scipy.optimize import basinhopping
 from classes import Homography
 
 
@@ -40,8 +39,8 @@ def obj_fun(parameters, scaling, left_image_list, right_image_list, world_points
     return error_vector
 
 
-def wrapped_obj_fun(obj_fun, parameter_dict):
-    return np.linalg.norm(obj_fun(**parameter_dict))
+def wrapped_obj_fun(parameters, scaling, left_image_list, right_image_list, world_points, hom_object):
+    return np.linalg.norm(obj_fun(parameters, scaling, left_image_list, right_image_list, world_points, hom_object))
 
 
 def calculate_scaling(ideal_parameters, err_fun, parameter_dict):
@@ -68,15 +67,9 @@ if __name__ == "__main__":
     Generate ideal case of rotation and translation transformation matrices.
     Assume 4 images.
     """
-    euler_angles = np.array([[90, 0, 0],
-                             [100, 0, 0],
-                             [110, 0, 0],
-                             [120, 0, 0]], dtype=float)
+    euler_angles = np.array([[90, 0, 0]], dtype=float)
     
-    translation_vectors = np.array([[0, 0, 300],
-                                    [0, 0, 350],
-                                    [0, 0, 400],
-                                    [0, 0, 450]], dtype=float)
+    translation_vectors = np.array([[0, 0, 300]], dtype=float)
     
     # Convert euler angles to rotational vector to be used as a parameter.
     rotational_vectors = euler_angles.copy()
@@ -152,65 +145,55 @@ if __name__ == "__main__":
     """
     Perturb the ideal case solution by 1% and see difference between converged and ideal case solutions.
     """
-    percent = 0.1
+    percent = 0.01
     perturbed_parameters = ideal_case_parameters.copy()
     for i, perturbed_parameter in enumerate(perturbed_parameters):
         if np.isclose(perturbed_parameter, 0):
             pass
         else:
             perturbed_parameters[i] *= random.uniform(1 - percent, 1 + percent)
-
-    parameter_dict = {"parameters": perturbed_parameters,
-                      "scaling": np.ones(40),
-                      "left_image_list": ideal_left_image_points,
-                      "right_image_list": ideal_right_image_points,
-                      "world_points": target_pattern.gridpoints,
-                      "hom_object": copy(throwaway_homography)}
-    res = wrapped_obj_fun(obj_fun, parameter_dict)
-    print(res)
     
     parameter_dict = {"parameters": ideal_case_parameters,
-                      "scaling": np.ones(40),
+                      "scaling": np.ones(22),
                       "left_image_list": ideal_left_image_points,
                       "right_image_list": ideal_right_image_points,
                       "world_points": target_pattern.gridpoints,
                       "hom_object": copy(throwaway_homography)}
     
     coefs = calculate_scaling(ideal_case_parameters, wrapped_obj_fun, parameter_dict)
-    new_ideal_parameters = ideal_case_parameters * coefs
-    parameter_dict["scaling"] = coefs
-    new_coefs = calculate_scaling(new_ideal_parameters, wrapped_obj_fun, parameter_dict)
+    
+    # new_ideal_parameters =  ideal_case_parameters * coefs
+    # parameter_dict["scaling"] = coefs
     
     """
     Perturb the ideal case solution by 1% and see difference between converged and ideal case solutions.
     """
-    percent = 0.1
-    new_perturbed_parameters = new_ideal_parameters.copy()
+    percent = 0.01
+    new_perturbed_parameters = ideal_case_parameters.copy()
     for i, new_perturbed_parameter in enumerate(new_perturbed_parameters):
         if np.isclose(new_perturbed_parameter, 0):
             pass
         else:
             new_perturbed_parameters[i] *= random.uniform(1 - percent, 1 + percent)
     parameter_dict["parameters"] = new_perturbed_parameters
-    res = wrapped_obj_fun(obj_fun, parameter_dict)
-    print(res)
     
     """
     Minimization callout.
     """
     minimizer_kwargs = {"method": "trust-constr",
-                        "args": (ideal_left_image_points,
+                        "args": (coefs,
+                                 ideal_left_image_points,
                                  ideal_right_image_points,
                                  target_pattern.gridpoints,
                                  copy(throwaway_homography)),
                         "jac": "3-point",
-                        "options": {"maxiter": 30, "disp": True}}
-
-    # opt_res = basinhopping(obj_fun, perturbed_parameters, minimizer_kwargs=minimizer_kwargs, niter=2)
-    opt_res = least_squares(obj_fun, new_perturbed_parameters, method='lm', max_nfev=100, verbose=2, x_scale="jac",
-                            args=(coefs,
-                                  ideal_left_image_points,
-                                  ideal_right_image_points,
-                                  target_pattern.gridpoints,
-                                  copy(throwaway_homography)))
+                        "options": {"maxiter": 3, "disp": True}}
+    
+    opt_res = basinhopping(wrapped_obj_fun, perturbed_parameters, minimizer_kwargs=minimizer_kwargs, niter=2)
+    # opt_res = least_squares(obj_fun, ideal_case_parameters, method='lm', max_nfev=100, verbose=2,
+    #                         args=(coefs,
+    #                               ideal_left_image_points,
+    #                               ideal_right_image_points,
+    #                               target_pattern.gridpoints,
+    #                               copy(throwaway_homography)))
     print(opt_res.x)

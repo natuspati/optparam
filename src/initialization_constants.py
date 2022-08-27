@@ -1,0 +1,22 @@
+import numpy as np
+
+# Target related constants.
+VERTICALS = 8
+HORIZONTALS = 11
+DISTANCE = 15.0
+
+DEFAULT_ANGLES = np.array([0.0, 0.0, 90.0])
+DEFAULT_TRANSLATION = np.array([0.0, 0.0, 300.0])
+
+# Camera related constants.
+F_X, F_Y, C_X, C_Y = 1000.0, 1000.0, 400.0, 300.0
+
+# Mirror-adapter related constants.
+DISTANCE_BW_MIRRORS = 20.0
+DISTANCE_TO_CAMERA = 20.0
+
+INNER_ANGLE = 45.0
+OUTER_ANGLE = 60.0
+
+INITIALIZATION_CONSTANTS = (VERTICALS, HORIZONTALS, DISTANCE, F_X, F_Y, C_X, C_Y, INNER_ANGLE, OUTER_ANGLE,
+                            DISTANCE_BW_MIRRORS, DISTANCE_TO_CAMERA, DEFAULT_ANGLES, DEFAULT_TRANSLATION)

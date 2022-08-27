@@ -40,7 +40,7 @@ def main():
     
     t_found = np.linalg.inv(r).dot(kt_vector)
     
-    print(f"Found translation vector: {t_found},\ninitial translation vector: {translation_vector}\n"
+    print(f"Found translation ,0vector: {t_found},\ninitial translation vector: {translation_vector}\n"
           f"Found rotation vector: {rotation_vector_found},\ninitial rotation vector: {rotation_vector}\n"
           f"Found intrinsic matrix:\n{r}\ninitial intrinsic matrix:\n{intrinsic_matrix}")
 
