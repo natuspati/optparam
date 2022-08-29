@@ -11,6 +11,7 @@ TRANSLATION_INCREMENT = np.array([5, 10, 50])
 
 class DataGenerator:
     def __init__(self, no_images: int,
+                 perturb_by: float,
                  verticals: int,
                  horizontals: int,
                  distance: float | int,
@@ -33,6 +34,8 @@ class DataGenerator:
         ----------
         no_images
             Number of images to be considered.
+        perturb_by
+            Amount of max shift from ideal case parameters in offset parameters.
         verticals
             Number of vertical edges on the target grid.
         horizontals
@@ -64,6 +67,7 @@ class DataGenerator:
         target_type = Checkerboard(verticals, horizontals, distance)
         self.world_points = target_type.points
         self.__number = no_images
+        self.perturb_by = perturb_by
         
         # Generate intrinsic matrix
         intrinsic_matrix = np.array([[f_x, 0, c_x],
@@ -88,15 +92,27 @@ class DataGenerator:
         self.left_ideal_points, self.right_ideal_points = self.homography.project_to_images(self.world_points)
         
         self.offset_parameters = self.ideal_parameters.copy()
-        self.perturb_parameters()
+        self.perturb_parameters(perturb_by)
     
-    def perturb_parameters(self, how_much=0.1):
+    def __str__(self):
+        return f"""
+        Number of images: {self.__number}\n
+        World points: {self.world_points}\n
+        Left image points: {self.left_ideal_points}\n
+        Right image points: {self.right_ideal_points}\n
+        Ideal parameters: {self.ideal_parameters}\n
+        Offset parameters: {self.offset_parameters}\n
+        Offset amount: {self.perturb_by}\n
+        """
+    
+    def perturb_parameters(self, how_much):
         """
         Randomly perturb ideal case parameters by a set amount.
         """
+        self.perturb_by = how_much
         for i, ideal_parameter in enumerate(self.ideal_parameters):
             self.offset_parameters[i] = ideal_parameter * np.random.uniform(1 - how_much, 1 + how_much)
-            
+    
     def copy_homography(self) -> Homography:
         """
         Return a shallow copy of the homography object.

@@ -1,33 +1,36 @@
 # Imports
-from scipy.optimize import least_squares
+import numpy as np
 from data_generator import DataGenerator
-from objective_function import objective
+from optimizer import Optimizer
 from initialization_constants import INITIALIZATION_CONSTANTS
+
+# Module settings
+np.set_printoptions(precision=2, suppress=True, threshold=3)
 
 # Constants
 NO_IMAGES = 1
-lsq_dict = {"method": "lm",
-            "jac": "2-point",
+PERTURB_BY = 0.01
+lsq_dict = {"method": "trf",
+            "jac": "3-point",
             "x_scale": "jac",
-            "verbose": 1,
+            "verbose": 0,
             "ftol": 1e-12,
             "xtol": 1e-12,
-            "max_nfev": 10}
+            "max_nfev": 1000}
 
 
 # Functions
 def main():
-    # Generate data
-    data = DataGenerator(NO_IMAGES, *INITIALIZATION_CONSTANTS)
-    homography = data.copy_homography()
+    # Generate data.
+    data = DataGenerator(NO_IMAGES, PERTURB_BY, *INITIALIZATION_CONSTANTS)
     
-    # Minimization callout.
-    lsq_dict["kwargs"] = {"world_points": data.world_points,
-                          "left_images_list": data.left_ideal_points,
-                          "right_images_list": data.right_ideal_points,
-                          "homography_object": homography}
-    least_squares(objective, data.offset_parameters, **lsq_dict)
+    # Call optimizer and store data in a wrapped child class of Scipy.OptimizeResult.
+    optimizer = Optimizer(lsq_dict, data)
+    result = optimizer.least_squares()
+    
+    return result
 
 
 if __name__ == '__main__':
-    main()
+    res = main()
+    print(res)
